@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            prefHeight="400.0" prefWidth="600.0">
+    <!--    fx:controller="com.example.demo.Register"-->
+
+    <HBox alignment="CENTER_LEFT" prefHeight="720.0" prefWidth="1280.0">
+        <VBox style="-fx-background-color: #0D47A1; -fx-alignment: center; -fx-padding: 20;" prefWidth="640">
+            <Label text="Welcome Page" style="-fx-font-size: 20px; -fx-text-fill: white;" />
+            <Label text="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec pharetra lacinia maximus. Integer pulvinar lacus." style="-fx-text-fill: white; -fx-wrap-text: true; -fx-alignment: center; -fx-padding: 10;" />
+        </VBox>
+        <VBox spacing="10" style="-fx-padding: 40;" prefWidth="640">
+            <Label text="Register" style="-fx-font-size: 24px; -fx-font-weight: bold;" />
+            <TextField promptText="Enter Your Full Name" />
+            <TextField promptText="Enter Your Email" />
+            <PasswordField promptText="Password" />
+            <CheckBox text="I agree All the Statements in Terms of service" />
+            <Button text="Sign Up" style="-fx-background-color: #1E88E5; -fx-text-fill: white; -fx-font-size: 14px;" />
+        </VBox>
+    </HBox>
+</AnchorPane>
