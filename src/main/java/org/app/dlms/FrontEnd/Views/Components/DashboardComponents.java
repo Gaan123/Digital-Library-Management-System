@@ -1,5 +1,6 @@
 package org.app.dlms.FrontEnd.Views.Components;
 
+import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -8,11 +9,22 @@ import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.PieChart;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import org.app.dlms.Backend.Dao.UserDAO;
+import org.app.dlms.Backend.Model.Member;
+import org.app.dlms.Backend.Model.User;
+import org.app.dlms.Middleware.Enums.MembershipType;
+import org.app.dlms.Middleware.Enums.UserRole;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 
 /**
@@ -210,19 +222,104 @@ public class DashboardComponents {
 
         actionsBar.getChildren().addAll(searchField, addUserBtn);
 
-        // Users table
-        TableView<Object> usersTable = new TableView<>();
+        // Create a typed TableView for User objects
+        TableView<User> usersTable = new TableView<>();
         usersTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        TableColumn<Object, String> idCol = new TableColumn<>("ID");
-        TableColumn<Object, String> nameCol = new TableColumn<>("Name");
-        TableColumn<Object, String> emailCol = new TableColumn<>("Email");
-        TableColumn<Object, String> phoneCol = new TableColumn<>("Phone");
-        TableColumn<Object, String> membershipCol = new TableColumn<>("Membership");
-        TableColumn<Object, String> actionCol = new TableColumn<>("Actions");
+        // Create properly typed columns
+        TableColumn<User, Integer> idCol = new TableColumn<>("ID");
+        idCol.setCellValueFactory(new PropertyValueFactory<>("id"));
 
-        usersTable.getColumns().addAll(idCol, nameCol, emailCol, phoneCol, membershipCol, actionCol);
+        TableColumn<User, String> nameCol = new TableColumn<>("Name");
+        nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
+
+        TableColumn<User, String> emailCol = new TableColumn<>("Email");
+        emailCol.setCellValueFactory(new PropertyValueFactory<>("email"));
+
+        TableColumn<User, String> phoneCol = new TableColumn<>("Phone");
+        phoneCol.setCellValueFactory(new PropertyValueFactory<>("phone"));
+
+        TableColumn<User, UserRole> roleCol = new TableColumn<>("User Type");
+        roleCol.setCellValueFactory(new PropertyValueFactory<>("role"));
+
+        // For membership type, assuming you have a method to get membership type from the user
+        TableColumn<User, String> membershipCol = new TableColumn<>("Membership Type");
+        membershipCol.setCellValueFactory(cellData -> {
+            User user = cellData.getValue();
+            String membershipType = "N/A";
+            // This would depend on your actual implementation
+            // For example, you might check if the user is a member and query a membership table
+            if (user.getRole() == UserRole.Member) {
+                // You might need to call a method from your MembershipDAO here
+                // membershipType = membershipDao.getMembershipTypeForUser(user.getId());
+                membershipType = "Standard"; // Default fallback
+            }
+            return new SimpleStringProperty(membershipType);
+        });
+
+        // Actions column with edit and delete buttons
+        TableColumn<User, Void> actionCol = new TableColumn<>("Actions");
+        actionCol.setCellFactory(param -> new TableCell<>() {
+            private final Button editBtn = new Button("Edit");
+            private final Button deleteBtn = new Button("Delete");
+            private final HBox actionButtons = new HBox(5, editBtn, deleteBtn);
+
+            {
+                editBtn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white;");
+                deleteBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white;");
+
+                editBtn.setOnAction(event -> {
+                    User user = getTableView().getItems().get(getIndex());
+                    // Handle edit action
+                    System.out.println("Edit user: " + user.getId());
+                    // Show edit form
+//                    showEditUserForm(mainContainer, usersView, user);
+                });
+
+                deleteBtn.setOnAction(event -> {
+                    User user = getTableView().getItems().get(getIndex());
+                    // Show confirmation dialog
+                    Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                    alert.setTitle("Delete User");
+                    alert.setHeaderText("Delete User: " + user.getName());
+                    alert.setContentText("Are you sure you want to delete this user?");
+
+                    Optional<ButtonType> result = alert.showAndWait();
+                    if (result.isPresent() && result.get() == ButtonType.OK) {
+                        // User confirmed, delete the user
+                        UserDAO userDAO = new UserDAO();
+                        boolean deleted = userDAO.deleteUser(user.getId());
+                        if (deleted) {
+                            // Refresh the table
+                            loadUsers(usersTable);
+                        } else {
+                            showErrorAlert("Failed to delete user.");
+                        }
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    setGraphic(actionButtons);
+                }
+            }
+        });
+
+        usersTable.getColumns().addAll(idCol, nameCol, emailCol, phoneCol, roleCol, membershipCol, actionCol);
         VBox.setVgrow(usersTable, Priority.ALWAYS);
+
+        // Add search functionality
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            filterUsers(usersTable, newValue);
+        });
+        System.out.println(usersTable);
+        // Populate the table with users
+        loadUsers(usersTable);
 
         usersView.getChildren().addAll(header, actionsBar, usersTable);
 
@@ -244,6 +341,8 @@ public class DashboardComponents {
                     mainContainer.setCenter(usersView);
                     isAddUserFormVisible = false;
                     mainContainer.setTop(null);
+                    // Refresh the table after returning to it
+                    loadUsers(usersTable);
                 });
 
                 HBox backButtonContainer = new HBox(backButton);
@@ -254,6 +353,72 @@ public class DashboardComponents {
 
         return mainContainer;
     }
+
+    // Method to load users from UserDAO
+    private void loadUsers(TableView<User> usersTable) {
+        // Clear existing items
+        usersTable.getItems().clear();
+
+        // Create UserDAO instance
+        UserDAO userDAO = new UserDAO();
+
+        // Fetch users from database through DAO
+        List<User> users = userDAO.getAllUsers();
+
+        // Add users to the table
+        usersTable.getItems().addAll(users);
+    }
+
+    // Method to filter users based on search text
+    private void filterUsers(TableView<User> usersTable, String searchText) {
+        if (searchText == null || searchText.isEmpty()) {
+            // If search text is empty, reload all users
+            loadUsers(usersTable);
+            return;
+        }
+
+        // Create UserDAO instance
+        UserDAO userDAO = new UserDAO();
+
+        // Use UserDAO to search for users
+        // This assumes you have a searchUsers method in your UserDAO
+        List<User> filteredUsers = userDAO.searchUsers(searchText);
+
+        // Update table with filtered users
+        usersTable.getItems().clear();
+        usersTable.getItems().addAll(filteredUsers);
+    }
+
+    // Helper method to show error alerts
+    private void showErrorAlert(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Error");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+//     Method to show edit user form
+ /*   private void showEditUserForm(BorderPane mainContainer, Node usersView, User user) {
+        // This assumes you have an EditUserForm class or similar
+        // You could also modify your AddUserForm to accept a User object for editing
+        Node editUserFormNode = editUserForm.createEditUserForm(user);
+        mainContainer.setCenter(editUserFormNode);
+
+        // Create a back button
+        Button backButton = new Button("← Back to Users List");
+        backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #303f9f; -fx-font-weight: bold;");
+        backButton.setOnAction(event -> {
+            mainContainer.setCenter(usersView);
+            mainContainer.setTop(null);
+            // Refresh the table after returning to it
+            loadUsers((TableView<User>) ((VBox) usersView).getChildren().get(2));
+        });
+
+        HBox backButtonContainer = new HBox(backButton);
+        backButtonContainer.setPadding(new Insets(10, 0, 0, 20));
+        mainContainer.setTop(backButtonContainer);
+    }*/
 
     private Node createBooksComponent() {
         VBox container = new VBox(20);
