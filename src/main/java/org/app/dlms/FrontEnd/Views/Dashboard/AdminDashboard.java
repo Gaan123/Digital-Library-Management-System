@@ -1,7 +1,6 @@
 package org.app.dlms.FrontEnd.Views.Dashboard;
 
 import javafx.application.Application;
-import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;

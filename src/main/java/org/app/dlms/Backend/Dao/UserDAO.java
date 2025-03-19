@@ -1,9 +1,6 @@
 package org.app.dlms.Backend.Dao;
 
-import org.app.dlms.Backend.Model.Admin;
-import org.app.dlms.Backend.Model.Librarian;
-import org.app.dlms.Backend.Model.Member;
-import org.app.dlms.Backend.Model.User;
+import org.app.dlms.Backend.Model.*;
 import org.app.dlms.Middleware.DatabaseConnection;
 import org.app.dlms.Middleware.Enums.UserRole;
 import org.app.dlms.Middleware.PasswordUtil;
@@ -13,6 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -27,11 +25,188 @@ public class UserDAO {
         this.passwordUtil = new PasswordUtil();
         dbConnection = DatabaseConnection.getInstance();
     }
+    /**
+     * Add a new user to the system
+     *
+     * @param user The user to add
+     * @return The ID of the newly added user, or -1 if operation fails
+     */
+    /*public int addUser(User user) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        int generatedId = -1;
+
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "INSERT INTO users (username, password, name, email, gender, address, phone, role) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            stmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS);
+
+            // Hash the password before storing it
+            String hashedPassword = passwordUtil.hashPassword(user.getPassword());
+
+            stmt.setString(1, user.getUsername());
+            stmt.setString(2, hashedPassword);
+            stmt.setString(3, user.getName());
+            stmt.setString(4, user.getEmail());
+            stmt.setString(5, user.getGender());
+            stmt.setString(6, user.getAddress());
+            stmt.setString(7, user.getPhone());
+
+            // Get the role based on the user type
+            UserRole role = UserRole.Member; // Default to Member
+            if (user instanceof Admin) {
+                role = UserRole.Admin;
+            } else if (user instanceof Librarian) {
+                role = UserRole.Librarian;
+            }
+            stmt.setString(8, role.toString());
+
+            int affectedRows = stmt.executeUpdate();
+
+            if (affectedRows > 0) {
+                rs = stmt.getGeneratedKeys();
+                if (rs.next()) {
+                    generatedId = rs.getInt(1);
+                    user.setId(generatedId);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error adding user: " + user.getUsername());
+            e.printStackTrace();
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
+        }
+
+        return generatedId;
+    }*/
+
+    /**
+     * Add a new user to the system
+     *
+     * @param user The user to add
+     * @return The ID of the newly added user, or -1 if operation fails
+     */
+    public int addUser(User user) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        PreparedStatement memberStmt = null;
+        PreparedStatement paymentStmt = null;
+        ResultSet rs = null;
+        int generatedId = -1;
+
+        try {
+            conn = dbConnection.getConnection();
+            conn.setAutoCommit(false); // Start transaction
+
+            String sql = "INSERT INTO users (username, password, name, email, gender, address, phone, role) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            stmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS);
+
+            // Hash the password before storing it
+            String hashedPassword = passwordUtil.hashPassword(user.getPassword());
+
+            stmt.setString(1, user.getUsername());
+            stmt.setString(2, hashedPassword);
+            stmt.setString(3, user.getName());
+            stmt.setString(4, user.getEmail());
+            stmt.setString(5, user.getGender());
+            stmt.setString(6, user.getAddress());
+            stmt.setString(7, user.getPhone());
+
+            // Get the role based on the user type
+            UserRole role = UserRole.Member; // Default to Member
+            if (user instanceof Admin) {
+                role = UserRole.Admin;
+            } else if (user instanceof Librarian) {
+                role = UserRole.Librarian;
+            }
+            stmt.setString(8, role.toString());
+
+            int affectedRows = stmt.executeUpdate();
+
+            if (affectedRows > 0) {
+                rs = stmt.getGeneratedKeys();
+                if (rs.next()) {
+                    generatedId = rs.getInt(1);
+                    user.setId(generatedId);
+
+                    // If user is a Member, add membership type and payment record
+                    if (user instanceof Member) {
+                        Member member = (Member) user;
+
+
+
+                        // Create payment record for membership fee
+                        String paymentSql = "INSERT INTO payments (member_id, payment_date, amount) VALUES (?, ?, ?)";
+                        paymentStmt = conn.prepareStatement(paymentSql);
+                        paymentStmt.setInt(1, generatedId);
+                        paymentStmt.setDate(2, new java.sql.Date(System.currentTimeMillis())); // Current date
+                        paymentStmt.setDouble(3, member.getMembershipFee());
+                        paymentStmt.executeUpdate();
+
+                        // Create Payment object for record keeping
+                        Payment payment = new Payment(
+                                0, // ID will be auto-generated
+                                generatedId,
+                                new Date(), // Current date
+                                member.getMembershipFee()
+                        );
+
+                        // If you need to track the payment ID, you can get it here
+                        // ResultSet paymentRs = paymentStmt.getGeneratedKeys();
+                        // if (paymentRs.next()) {
+                        //    payment.setId(paymentRs.getInt(1));
+                        // }
+                    }
+                }
+
+                conn.commit(); // Commit transaction
+            }
+        } catch (SQLException e) {
+            System.err.println("Error adding user: " + user.getUsername());
+            e.printStackTrace();
+
+            // Rollback transaction if any operations failed
+            try {
+                if (conn != null) {
+                    conn.rollback();
+                }
+            } catch (SQLException rollbackEx) {
+                System.err.println("Error during transaction rollback");
+                rollbackEx.printStackTrace();
+            }
+
+            return -1;
+        } finally {
+            // Reset auto-commit to default
+            try {
+                if (conn != null) {
+                    conn.setAutoCommit(true);
+                }
+            } catch (SQLException autoCommitEx) {
+                System.err.println("Error resetting auto-commit");
+                autoCommitEx.printStackTrace();
+            }
+
+            // Close all resources
+            if (memberStmt != null) {
+                try { memberStmt.close(); } catch (SQLException e) { e.printStackTrace(); }
+            }
+            if (paymentStmt != null) {
+                try { paymentStmt.close(); } catch (SQLException e) { e.printStackTrace(); }
+            }
+            dbConnection.closeResources(conn, stmt, rs);
+        }
+
+        return generatedId;
+    }
 
     /**
      * Get a book by its ISBN
      *
-     * @param isbn The ISBN of the book
+     * @param username The ISBN of the book
      * @return The book if found, null otherwise
      */
     public User login(String username, String password) {
