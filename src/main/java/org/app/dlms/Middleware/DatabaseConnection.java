@@ -56,11 +56,16 @@ public class DatabaseConnection {
                 password = props.getProperty("db.password");
                 driver = props.getProperty("db.driver");
             }
+            boolean databaseExists = checkIfDatabaseExists();
 
+            if (!databaseExists) {
+                // Only create database if it doesn't exist
+                createDatabaseIfNotExists();
+            }
             // Create database if it doesn't exist
 //            createDatabaseIfNotExists();
 
-        } catch (IOException ex) {
+        } catch (Exception ex){
             ex.printStackTrace();
             // Fall back to default values
             dbUrl = "jdbc:mysql://localhost:3306/dlms";
@@ -71,8 +76,25 @@ public class DatabaseConnection {
             // Create database if it doesn't exist
             createDatabaseIfNotExists();
         }
-    }
 
+    }
+    private boolean checkIfDatabaseExists() {
+        String dbName = extractDatabaseName(dbUrl);
+        String baseUrl = dbUrl.substring(0, dbUrl.lastIndexOf("/"));
+
+        try {
+            Class.forName(driver);
+            try (Connection conn = DriverManager.getConnection(baseUrl, username, password);
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SHOW DATABASES LIKE '" + dbName + "'")) {
+
+                return rs.next(); // Returns true if the database exists
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
     private void createDatabaseIfNotExists() {
         // Extract database name from connection URL
         String dbName = extractDatabaseName(dbUrl);
@@ -97,13 +119,13 @@ public class DatabaseConnection {
                 stmt.executeUpdate("USE " + dbName);
 
                 // Create genres table first (since it's referenced by books)
-                stmt.executeUpdate("CREATE TABLE genres (" +
+                stmt.executeUpdate("CREATE TABLE IF NOT EXISTS genres  (" +
                         "id INT AUTO_INCREMENT PRIMARY KEY, " +
                         "name VARCHAR(100) NOT NULL UNIQUE" +
                         ")");
 
                 // Create books table
-                stmt.executeUpdate("CREATE TABLE books (" +
+                stmt.executeUpdate("CREATE TABLE IF NOT EXISTS books  (" +
                         "id INT AUTO_INCREMENT PRIMARY KEY, " +
                         "title VARCHAR(255) NOT NULL, " +
                         "author VARCHAR(255) NOT NULL, " +
@@ -117,7 +139,7 @@ public class DatabaseConnection {
                         ")");
 
                 // Create users table
-                stmt.executeUpdate("CREATE TABLE users (" +
+                stmt.executeUpdate("CREATE TABLE IF NOT EXISTS users  (" +
                         "id INT AUTO_INCREMENT PRIMARY KEY, " +
                         "username VARCHAR(50) NOT NULL UNIQUE, " +
                         "password VARCHAR(255) NOT NULL, " +
@@ -132,7 +154,7 @@ public class DatabaseConnection {
                         ")");
 
                 // Create payments table
-                stmt.executeUpdate("CREATE TABLE payments (" +
+                stmt.executeUpdate("CREATE TABLE IF NOT EXISTS payments  (" +
                         "id INT AUTO_INCREMENT PRIMARY KEY, " +
                         "member_id INT NOT NULL, " +
                         "payment_date DATE NOT NULL, " +
@@ -141,7 +163,7 @@ public class DatabaseConnection {
                         ")");
 
                 // Create borrow_records table (which was missing but referenced by fines)
-                stmt.executeUpdate("CREATE TABLE borrow_records (" +
+                stmt.executeUpdate("CREATE TABLE IF NOT EXISTS borrow_records  (" +
                         "id INT AUTO_INCREMENT PRIMARY KEY, " +
                         "member_id INT NOT NULL, " +
                         "book_id INT NOT NULL, " +
@@ -155,7 +177,7 @@ public class DatabaseConnection {
 
 
                 // Create fines table
-                stmt.executeUpdate("CREATE TABLE fines (" +
+                stmt.executeUpdate("CREATE TABLE IF NOT EXISTS fines  (" +
                         "id INT AUTO_INCREMENT PRIMARY KEY, " +
                         "member_id INT NOT NULL, " +
                         "borrow_record_id INT NOT NULL, " +
