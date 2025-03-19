@@ -29,7 +29,9 @@ import javafx.stage.StageStyle;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.Image;
 import org.app.dlms.Backend.Dao.UserDAO;
+import org.app.dlms.Backend.Model.User;
 import org.app.dlms.FrontEnd.Views.Dashboard.AdminDashboard;
+import org.app.dlms.Middleware.Services.AlertService;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -195,11 +197,11 @@ public class LoginPage extends Application {
 //                ,
 //                createAccountLink
         );
-
+        AlertService alertService= new AlertService();
         // Set action for login button
         loginBtn.setOnAction(e -> {
             if (validateLogin(userTextField.getText(), pwField.getText())) {
-                showAlert(Alert.AlertType.INFORMATION, "Login Successful",
+                alertService.showAlert(Alert.AlertType.INFORMATION, "Login Successful",
                         "Welcome " + userTextField.getText() + "!");
                 AdminDashboard dashboard = new AdminDashboard();
                 Stage dashboardStage = new Stage();
@@ -208,7 +210,7 @@ public class LoginPage extends Application {
                 // Optionally hide the login window instead of closing it
                 primaryStage.hide();
             } else {
-                showAlert(Alert.AlertType.ERROR, "Login Failed",
+                alertService.showAlert(Alert.AlertType.ERROR, "Login Failed",
                         "Invalid username or password.");
             }
         });
@@ -244,19 +246,13 @@ public class LoginPage extends Application {
         // For demonstration only - in a real application you would validate against a database
         UserDAO userDAO = new UserDAO();
         try {
-             userDAO.login(username, password);
-            return true;
+             User user = userDAO.login(username, password);
+            return user != null;
         }catch (Exception e) {
             return false;
         }
     }
 
-    private void showAlert(Alert.AlertType alertType, String title, String message) {
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
+
 
 }

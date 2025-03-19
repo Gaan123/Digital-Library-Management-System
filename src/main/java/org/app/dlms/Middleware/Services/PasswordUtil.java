@@ -1,4 +1,4 @@
-package org.app.dlms.Middleware;
+package org.app.dlms.Middleware.Services;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

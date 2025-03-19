@@ -6,14 +6,12 @@ import org.app.dlms.Backend.Model.Member;
 import org.app.dlms.Backend.Model.User;
 import org.app.dlms.Middleware.DatabaseConnection;
 import org.app.dlms.Middleware.Enums.UserRole;
-import org.app.dlms.Middleware.PasswordUtil;
+import org.app.dlms.Middleware.Services.PasswordUtil;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Data Access Object for Book entities
@@ -27,11 +25,66 @@ public class UserDAO {
         this.passwordUtil = new PasswordUtil();
         dbConnection = DatabaseConnection.getInstance();
     }
+    /**
+     * Add a new user to the system
+     *
+     * @param user The user to add
+     * @return The ID of the newly added user, or -1 if operation fails
+     */
+    public int addUser(User user) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        int generatedId = -1;
 
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "INSERT INTO users (username, password, name, email, gender, address, phone, role) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            stmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS);
+
+            // Hash the password before storing it
+            String hashedPassword = passwordUtil.hashPassword(user.getPassword());
+
+            stmt.setString(1, user.getUsername());
+            stmt.setString(2, hashedPassword);
+            stmt.setString(3, user.getName());
+            stmt.setString(4, user.getEmail());
+            stmt.setString(5, user.getGender());
+            stmt.setString(6, user.getAddress());
+            stmt.setString(7, user.getPhone());
+
+            // Get the role based on the user type
+            UserRole role = UserRole.Member; // Default to Member
+            if (user instanceof Admin) {
+                role = UserRole.Admin;
+            } else if (user instanceof Librarian) {
+                role = UserRole.Librarian;
+            }
+            stmt.setString(8, role.toString());
+
+            int affectedRows = stmt.executeUpdate();
+
+            if (affectedRows > 0) {
+                rs = stmt.getGeneratedKeys();
+                if (rs.next()) {
+                    generatedId = rs.getInt(1);
+                    user.setId(generatedId);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error adding user: " + user.getUsername());
+            e.printStackTrace();
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
+        }
+
+        return generatedId;
+    }
     /**
      * Get a book by its ISBN
      *
-     * @param isbn The ISBN of the book
+     * @param username Username of the user and password
      * @return The book if found, null otherwise
      */
     public User login(String username, String password) {
@@ -58,7 +111,7 @@ public class UserDAO {
                 UserRole role = UserRole.valueOf(rs.getString("role"));
                 int id = rs.getInt("id");
 //                String username = rs.getString("username");
-
+                System.out.println("Stored hashed password: " + this.passwordUtil.verifyPassword(password, storedHashedPassword));
                 // Verify the provided password against the stored hash
                 if (this.passwordUtil.verifyPassword(password, storedHashedPassword)) {
                     System.out.println("User logged in");
@@ -89,7 +142,7 @@ public class UserDAO {
             dbConnection.closeResources(conn, stmt, rs);
         }
 
-        return user;
+        return null;
     }
 
 
