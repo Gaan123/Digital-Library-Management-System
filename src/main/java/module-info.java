@@ -14,8 +14,6 @@ module org.app.dlms {
     requires java.desktop;
 
     opens org.app.dlms to javafx.fxml;
-    opens org.app.dlms.FrontEnd.Views to javafx.fxml;
-    exports org.app.dlms.FrontEnd.Views to javafx.graphics;
     opens org.app.dlms.FrontEnd.Views.Auth to javafx.fxml;
     exports org.app.dlms.FrontEnd.Views.Auth to javafx.graphics;
     opens org.app.dlms.FrontEnd.Views.Dashboard to javafx.fxml;

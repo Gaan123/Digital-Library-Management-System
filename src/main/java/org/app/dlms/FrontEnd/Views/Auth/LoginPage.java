@@ -165,18 +165,18 @@ public class LoginPage extends Application {
         );
 
         // Create account link
-        Text createAccountLink = new Text("Don't have an account? Create one");
-        createAccountLink.setFont(Font.font("Montserrat", 12));
-        createAccountLink.setFill(Color.web("#3949ab"));
-        createAccountLink.setStyle("-fx-cursor: hand;");
-
-        // Hover effect for create account link
-        createAccountLink.setOnMouseEntered(e ->
-                createAccountLink.setFill(Color.web("#5c6bc0"))
-        );
-        createAccountLink.setOnMouseExited(e ->
-                createAccountLink.setFill(Color.web("#3949ab"))
-        );
+//        Text createAccountLink = new Text("Don't have an account? Create one");
+//        createAccountLink.setFont(Font.font("Montserrat", 12));
+//        createAccountLink.setFill(Color.web("#3949ab"));
+//        createAccountLink.setStyle("-fx-cursor: hand;");
+//
+//        // Hover effect for create account link
+//        createAccountLink.setOnMouseEntered(e ->
+//                createAccountLink.setFill(Color.web("#5c6bc0"))
+//        );
+//        createAccountLink.setOnMouseExited(e ->
+//                createAccountLink.setFill(Color.web("#3949ab"))
+//        );
 
 
 
@@ -191,8 +191,9 @@ public class LoginPage extends Application {
                 titleBox,
                 userTextField,
                 pwField,
-                loginBtn,
-                createAccountLink
+                loginBtn
+//                ,
+//                createAccountLink
         );
 
         // Set action for login button
@@ -213,10 +214,10 @@ public class LoginPage extends Application {
         });
 
         // Set action for create account link
-        createAccountLink.setOnMouseClicked(e -> {
-            showAlert(Alert.AlertType.INFORMATION, "Create Account",
-                    "Create account functionality would be implemented here.");
-        });
+//        createAccountLink.setOnMouseClicked(e -> {
+//            showAlert(Alert.AlertType.INFORMATION, "Create Account",
+//                    "Create account functionality would be implemented here.");
+//        });
 
         // Make the window draggable
         borderPane.setOnMousePressed(event -> {
@@ -233,7 +234,7 @@ public class LoginPage extends Application {
         borderPane.setCenter(loginBox);
 
         // Set the scene
-        Scene scene = new Scene(borderPane, 600, 500);
+        Scene scene = new Scene(borderPane, 1920, 1080);
         primaryStage.setScene(scene);
 
         primaryStage.show();
@@ -258,7 +259,4 @@ public class LoginPage extends Application {
         alert.showAndWait();
     }
 
-    public static void main(String[] args) {
-        launch(args);
-    }
 }
