@@ -29,8 +29,11 @@ import javafx.stage.StageStyle;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.Image;
 import org.app.dlms.Backend.Dao.UserDAO;
+import org.app.dlms.Backend.Model.Admin;
+import org.app.dlms.Backend.Model.Librarian;
 import org.app.dlms.Backend.Model.User;
 import org.app.dlms.FrontEnd.Views.Dashboard.AdminDashboard;
+import org.app.dlms.FrontEnd.Views.Dashboard.LibrarianDashboard;
 import org.app.dlms.Middleware.Services.AlertService;
 
 import java.io.FileInputStream;
@@ -200,12 +203,19 @@ public class LoginPage extends Application {
         AlertService alertService= new AlertService();
         // Set action for login button
         loginBtn.setOnAction(e -> {
-            if (validateLogin(userTextField.getText(), pwField.getText())) {
+            User user= validateLogin(userTextField.getText(), pwField.getText());
+            if (user != null) {
                 alertService.showAlert(Alert.AlertType.INFORMATION, "Login Successful",
                         "Welcome " + userTextField.getText() + "!");
-                AdminDashboard dashboard = new AdminDashboard();
                 Stage dashboardStage = new Stage();
-                dashboard.start(dashboardStage);
+                if (user instanceof Admin){
+                    AdminDashboard dashboard = new AdminDashboard();
+                    dashboard.start(dashboardStage, (Admin) user);
+                }
+                if (user instanceof Librarian){
+                    LibrarianDashboard dashboard = new LibrarianDashboard();
+                    dashboard.start(dashboardStage, (Librarian) user);
+                }
 
                 // Optionally hide the login window instead of closing it
                 primaryStage.hide();
@@ -242,14 +252,14 @@ public class LoginPage extends Application {
         primaryStage.show();
     }
 
-    private boolean validateLogin(String username, String password) {
+    private User validateLogin(String username, String password) {
         // For demonstration only - in a real application you would validate against a database
         UserDAO userDAO = new UserDAO();
         try {
              User user = userDAO.login(username, password);
-            return user != null;
+            return user;
         }catch (Exception e) {
-            return false;
+            return null;
         }
     }
 

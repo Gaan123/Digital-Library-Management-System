@@ -249,11 +249,10 @@ public class UserDAO {
                             return new Member( id, username, "***",  name, email,
                                     gender,  address, phone);
                     }
-                    if (role ==UserRole.Admin){
-
-                    }
+                    return null;
 
                 } else {
+
                     throw new SQLException("Wrong username or password");
                 }
             }
@@ -263,8 +262,7 @@ public class UserDAO {
         } finally {
             dbConnection.closeResources(conn, stmt, rs);
         }
-
-        return user;
+        return null;
     }
     /**
      * Get all users in the system

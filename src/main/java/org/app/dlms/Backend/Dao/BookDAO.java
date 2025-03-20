@@ -61,6 +61,45 @@ public class BookDAO {
 
         return book;
     }
+    /**
+     * Get a book by its ISBN
+     *
+     * @param id The ISBN of the book
+     * @return The book if found, null otherwise
+     */
+    public Book getBookById(int id) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        Book book = null;
+
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "SELECT * FROM books WHERE id = ?";
+            stmt = conn.prepareStatement(sql);
+            stmt.setString(1, String.valueOf(id));
+            rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                book = new Book();
+                book.setId(rs.getInt("id"));
+                book.setTitle(rs.getString("title"));
+                book.setAuthor(rs.getString("author"));
+                book.setIsbn(rs.getString("isbn"));
+                book.setPublisher(rs.getString("publisher"));
+                book.setYear(rs.getInt("year"));
+                book.setAvailable(rs.getBoolean("available"));
+                book.setStock(rs.getInt("stock"));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error retrieving book by ISBN: " + id);
+            e.printStackTrace();
+        } finally {
+            closeResources(conn, stmt, rs);
+        }
+
+        return book;
+    }
 
     /**
      * Get all books in the library

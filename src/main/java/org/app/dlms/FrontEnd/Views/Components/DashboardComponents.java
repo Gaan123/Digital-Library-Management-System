@@ -56,9 +56,10 @@ public class DashboardComponents {
 
         usersComponent = createUsersComponent();
         BookInventoryComponent bookComponent = new BookInventoryComponent();
+        BorrowedBooksComponent borrowedBookComponent = new BorrowedBooksComponent();
         booksComponent = bookComponent.createBooksComponent();
 //        booksComponent = createBooksComponent();
-        borrowedBooksComponent = createBorrowedBooksComponent();
+        borrowedBooksComponent = borrowedBookComponent.createBorrowedBooksComponent();
         paymentsComponent = createPaymentsComponent();
     }
 
@@ -423,50 +424,6 @@ public class DashboardComponents {
         mainContainer.setTop(backButtonContainer);
     }*/
 
-    private Node createBooksComponent() {
-        VBox container = new VBox(20);
-        container.setPadding(new Insets(20));
-
-        // Books header
-        Text header = new Text("Books Inventory");
-        header.setFont(Font.font("Montserrat", FontWeight.BOLD, 24));
-        header.setFill(Color.web("#303f9f"));
-
-        // Search and actions bar
-        HBox actionsBar = new HBox(10);
-        actionsBar.setAlignment(Pos.CENTER_LEFT);
-
-        TextField searchField = new TextField();
-        searchField.setPromptText("Search books...");
-        searchField.setPrefWidth(300);
-
-        Button addBookBtn = new Button("Add New Book");
-        addBookBtn.setStyle("-fx-background-color: #303f9f; -fx-text-fill: white;");
-
-        Button categoryBtn = new Button("Categories");
-        categoryBtn.setStyle("-fx-background-color: #5c6bc0; -fx-text-fill: white;");
-
-        actionsBar.getChildren().addAll(searchField, addBookBtn, categoryBtn);
-
-        // Books table
-        TableView<Object> booksTable = new TableView<>();
-        booksTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-
-        TableColumn<Object, String> idCol = new TableColumn<>("ISBN");
-        TableColumn<Object, String> titleCol = new TableColumn<>("Title");
-        TableColumn<Object, String> authorCol = new TableColumn<>("Author");
-        TableColumn<Object, String> categoryCol = new TableColumn<>("Category");
-        TableColumn<Object, String> copiesCol = new TableColumn<>("Copies");
-        TableColumn<Object, String> statusCol = new TableColumn<>("Status");
-        TableColumn<Object, String> actionCol = new TableColumn<>("Actions");
-
-        booksTable.getColumns().addAll(idCol, titleCol, authorCol, categoryCol, copiesCol, statusCol, actionCol);
-        VBox.setVgrow(booksTable, Priority.ALWAYS);
-
-        container.getChildren().addAll(header, actionsBar, booksTable);
-
-        return container;
-    }
 
     private Node createBorrowedBooksComponent() {
         VBox container = new VBox(20);
