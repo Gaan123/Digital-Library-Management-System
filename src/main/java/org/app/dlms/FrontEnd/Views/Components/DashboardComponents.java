@@ -53,8 +53,11 @@ public class DashboardComponents {
     private void initializeComponents() {
         // Initialize all components
         dashboardComponent = createDashboardComponent();
+
         usersComponent = createUsersComponent();
-        booksComponent = createBooksComponent();
+        BookInventoryComponent bookComponent = new BookInventoryComponent();
+        booksComponent = bookComponent.createBooksComponent();
+//        booksComponent = createBooksComponent();
         borrowedBooksComponent = createBorrowedBooksComponent();
         paymentsComponent = createPaymentsComponent();
     }
