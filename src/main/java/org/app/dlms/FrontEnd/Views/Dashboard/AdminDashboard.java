@@ -47,7 +47,7 @@ public class AdminDashboard extends Application {
         mainLayout.setCenter(contentArea.getComponent());
 
         // Create and set the top bar
-        TopBar topBar = new TopBar(currentUser);
+        TopBar topBar = new TopBar(admin);
         profileDropdown = topBar.getProfileDropdown();
         topBar.setProfileClickHandler(e -> handleProfileClick(e, topBar));
         mainLayout.setTop(topBar.getComponent());

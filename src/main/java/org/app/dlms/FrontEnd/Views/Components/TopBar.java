@@ -19,6 +19,7 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Popup;
 import javafx.event.EventHandler;
+import org.app.dlms.Backend.Model.User;
 
 /**
  * A reusable top bar component for the admin dashboard
@@ -27,10 +28,10 @@ public class TopBar {
     private HBox component;
     private HBox profileSection;
     private Popup profileDropdown;
-    private String currentUser;
+    private User currentUser;
     private EventHandler<MouseEvent> profileClickHandler;
 
-    public TopBar(String currentUser) {
+    public TopBar(User currentUser) {
         this.currentUser = currentUser;
         initializeComponent();
         createProfileDropdown();
@@ -50,18 +51,7 @@ public class TopBar {
         shadow.setOffsetY(1);
         component.setEffect(shadow);
 
-        // Create search field
-        TextField searchField = new TextField();
-        searchField.setPromptText("Search...");
-        searchField.setPrefWidth(300);
-        searchField.setStyle(
-                "-fx-background-color: #f5f5f5;" +
-                        "-fx-border-color: #e0e0e0;" +
-                        "-fx-border-radius: 20;" +
-                        "-fx-background-radius: 20;" +
-                        "-fx-font-size: 13px;" +
-                        "-fx-padding: 8 15 8 15;"
-        );
+
 
         // Create notification icon
         Text notificationIcon = new Text("🔔");
@@ -87,7 +77,7 @@ public class TopBar {
         iconsBox.setAlignment(Pos.CENTER);
         iconsBox.getChildren().addAll(notificationIcon, messageIcon);
 
-        component.getChildren().addAll(searchField, spacer, iconsBox, profileSection);
+        component.getChildren().addAll( spacer, iconsBox, profileSection);
     }
 
     private HBox createProfileSection() {
@@ -106,7 +96,7 @@ public class TopBar {
         defaultProfile.setMinSize(40, 40);
         defaultProfile.setMaxSize(40, 40);
 
-        Text initials = new Text(getInitials(currentUser));
+        Text initials = new Text(getInitials(currentUser.getName()));
         initials.setFont(Font.font("Montserrat", FontWeight.BOLD, 16));
         initials.setFill(Color.WHITE);
         defaultProfile.getChildren().add(initials);
@@ -116,11 +106,11 @@ public class TopBar {
         // Create profile text info
         VBox profileInfo = new VBox(2);
 
-        Text nameText = new Text(currentUser);
+        Text nameText = new Text(currentUser.getName());
         nameText.setFont(Font.font("Montserrat", FontWeight.MEDIUM, 14));
         nameText.setFill(Color.web("#212121"));
 
-        Text roleText = new Text("Administrator");
+        Text roleText = new Text(currentUser.getRole().toString());
         roleText.setFont(Font.font("Montserrat", FontWeight.NORMAL, 12));
         roleText.setFill(Color.web("#757575"));
 

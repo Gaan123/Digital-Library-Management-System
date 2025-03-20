@@ -44,7 +44,7 @@ public class BorrowedBooksComponent {
     private DatePicker borrowDatePicker;
     private DatePicker dueDatePicker;
     private DatePicker returnDatePicker;
-    
+    private User currentUser;
     private static final long OVERDUE_DAYS = 30;
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     // Class-level variable
@@ -67,10 +67,11 @@ public class BorrowedBooksComponent {
             System.err.println("Error preloading data: " + e.getMessage());
         }
     }
-    public BorrowedBooksComponent() {
+    public BorrowedBooksComponent(User user) {
         this.borrowRecordDAO = new BorrowRecordDAO();
         this.userDAO = new UserDAO();
         this.bookDAO = new BookDAO();
+        currentUser=user;
         preloadData();
     }
 
@@ -102,11 +103,14 @@ public class BorrowedBooksComponent {
 
         Button overdueBtn = new Button("Overdue");
         overdueBtn.setStyle("-fx-background-color: #5c6bc0; -fx-text-fill: white;");
-
         Button issueBookBtn = new Button("Issue Book");
         issueBookBtn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white;");
+        if (currentUser.getRole()==UserRole.Member){
+            filterBar.getChildren().addAll(searchField, allBtn, activeBtn, overdueBtn);
+        }else {
+            filterBar.getChildren().addAll(searchField, allBtn, activeBtn, overdueBtn, issueBookBtn);
+        }
 
-        filterBar.getChildren().addAll(searchField, allBtn, activeBtn, overdueBtn, issueBookBtn);
 
         // Create the borrowing records table
         borrowingTable = new TableView<>();
@@ -312,10 +316,10 @@ public class BorrowedBooksComponent {
             updateButtonStyles(overdueBtn, allBtn, activeBtn);
             filterOverdueRecords();
         });
-        
+
         // Add issue book button functionality
         issueBookBtn.setOnAction(e -> showAddForm(mainContainer, container));
-        
+
         container.getChildren().addAll(header, filterBar, borrowingTable);
         mainContainer.setCenter(container);
         
@@ -328,9 +332,14 @@ public class BorrowedBooksComponent {
             button.setStyle("-fx-background-color: #5c6bc0; -fx-text-fill: white;");
         }
     }
-    
+
     private void refreshTable() {
-        List<BorrowRecord> records = borrowRecordDAO.getAllBorrowRecords();
+        List<BorrowRecord> records = new ArrayList<>();
+        if (currentUser.getRole() == UserRole.Member) {
+            records = borrowRecordDAO.getBorrowRecordsByMember(currentUser.getId());
+        } else {
+            records = borrowRecordDAO.getAllBorrowRecords();
+        }
         borrowingTable.setItems(FXCollections.observableArrayList(records));
     }
     
@@ -339,8 +348,13 @@ public class BorrowedBooksComponent {
             refreshTable();
             return;
         }
-        
-        List<BorrowRecord> allRecords = borrowRecordDAO.getAllBorrowRecords();
+
+        List<BorrowRecord> allRecords = new ArrayList<>();
+        if (currentUser.getRole() == UserRole.Member) {
+            allRecords = borrowRecordDAO.getBorrowRecordsByMember(currentUser.getId());
+        } else {
+            allRecords = borrowRecordDAO.getAllBorrowRecords();
+        }
         List<BorrowRecord> filteredRecords = new ArrayList<>();
         
         for (BorrowRecord record : allRecords) {
@@ -369,7 +383,12 @@ public class BorrowedBooksComponent {
     }
     
     private void filterOverdueRecords() {
-        List<BorrowRecord> allRecords = borrowRecordDAO.getAllBorrowRecords();
+        List<BorrowRecord> allRecords = new ArrayList<>();
+        if (currentUser.getRole() == UserRole.Member) {
+            allRecords = borrowRecordDAO.getBorrowRecordsByMember(currentUser.getId());
+        } else {
+            allRecords = borrowRecordDAO.getAllBorrowRecords();
+        }
         Date currentDate = new Date();
         
         List<BorrowRecord> overdueRecords = allRecords.stream()

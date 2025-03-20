@@ -47,7 +47,7 @@ public class DashboardComponents {
 
     public DashboardComponents(ContentArea contentArea,User user) {
         this.contentArea = contentArea;
-        this.addUserForm = new AddUserForm();
+        this.addUserForm = new AddUserForm(user);
         this.currentUser = user;
         initializeComponents();
     }
@@ -58,7 +58,7 @@ public class DashboardComponents {
 
         usersComponent = createUsersComponent();
         BookInventoryComponent bookComponent = new BookInventoryComponent(currentUser);
-        BorrowedBooksComponent borrowedBookComponent = new BorrowedBooksComponent();
+        BorrowedBooksComponent borrowedBookComponent = new BorrowedBooksComponent(currentUser);
         booksComponent = bookComponent.createBooksComponent();
 //        booksComponent = createBooksComponent();
         borrowedBooksComponent = borrowedBookComponent.createBorrowedBooksComponent();

@@ -25,8 +25,14 @@ import org.app.dlms.Middleware.Enums.MembershipType;
 public class AddUserForm {
 
     private final UserDAO userDAO;
+    private User currentUser;
 
-    public AddUserForm() {
+    public AddUserForm(User currentUser) {
+        this.currentUser = currentUser;
+        userDAO = new UserDAO();
+    }
+    public AddUserForm(User currentUser,User user) {
+        this.currentUser = currentUser;
         userDAO = new UserDAO();
     }
 
@@ -107,8 +113,21 @@ public class AddUserForm {
         // User role selection
         Label roleLabel = new Label("User Role");
         ComboBox<String> roleComboBox = new ComboBox<>();
-        roleComboBox.getItems().addAll("Member", "Librarian", "Admin");
-        roleComboBox.setValue("Member"); // Default role
+
+        // Check if current user is a Librarian
+        boolean isLibrarian = currentUser instanceof Librarian;
+
+        if (isLibrarian) {
+            // Librarians can only create Member accounts
+            roleComboBox.getItems().add("Member");
+            roleComboBox.setValue("Member");
+            roleComboBox.setDisable(true); // Disable the combo box since there's only one option
+        } else {
+            // Admins can create any type of user
+            roleComboBox.getItems().addAll("Member", "Librarian", "Admin");
+            roleComboBox.setValue("Member"); // Default role
+        }
+
         formGrid.add(roleLabel, 0, 8);
         formGrid.add(roleComboBox, 1, 8);
 
