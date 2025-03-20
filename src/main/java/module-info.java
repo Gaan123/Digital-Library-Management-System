@@ -19,4 +19,5 @@ module org.app.dlms {
     opens org.app.dlms.FrontEnd.Views.Dashboard to javafx.fxml;
     exports org.app.dlms.FrontEnd.Views.Dashboard to javafx.graphics;
     exports org.app.dlms;
+    opens org.app.dlms.Backend.Model to javafx.base;
 }

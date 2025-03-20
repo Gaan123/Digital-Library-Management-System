@@ -1,6 +1,9 @@
 package org.app.dlms.Backend.Model;
 
+import org.app.dlms.Middleware.Enums.MembershipType;
 import org.app.dlms.Middleware.Enums.UserRole;
+import org.app.dlms.Middleware.Factory.MembershipFeeStrategyFactory;
+import org.app.dlms.Middleware.Strategy.MembershipFeeStrategy;
 
 import java.util.Date;
 import java.util.List;
@@ -11,9 +14,13 @@ import java.util.List;
  */
 public class Member extends User {
     private static final UserRole role = UserRole.Member;
-    private String membershipType; // Type of membership, e.g., "Student", "Faculty"
+    private MembershipType membershipType; // Type of membership, e.g., "Student", "Faculty"
     private String membershipStatus; // "Active" or "Inactive"
     private List<Payment> payments; // List of payments made by the member
+    private double membershipFee;
+    private MembershipFeeStrategy feeStrategy;
+
+
     /**
      * Constructor for Member, passing common attributes to User and initializing membershipType.
      *
@@ -28,14 +35,20 @@ public class Member extends User {
 //     * @param membershipType the type of membership
      */
     public Member(int id, String username, String password, String name, String email,
-                  String gender, String address, String phone
-//            , String membershipType,
-//                  String membershipStatus, List<Payment> payments
-    ) {
+                  String gender, String address, String phone) {
         super(id, username, password, name, email, gender, address, phone,role);
-//        this.membershipType = membershipType;
-//        this.membershipStatus = membershipStatus;
-//        this.payments = payments;
+        // Set default membership type
+        this.membershipType = MembershipType.Bronze;
+        this.feeStrategy = MembershipFeeStrategyFactory.createStrategy(membershipType);
+        this.membershipFee = feeStrategy.calculateFee();
+    }
+
+    public Member(int id, String username, String password, String name, String email,
+                  String gender, String address, String phone, MembershipType membershipType) {
+        super(id, username, password, name, email, gender, address, phone,role);
+        this.membershipType = membershipType;
+        this.feeStrategy = MembershipFeeStrategyFactory.createStrategy(membershipType);
+        this.membershipFee = feeStrategy.calculateFee();
     }
     /**
      * Checks if the membership is active based on the most recent payment.
@@ -76,20 +89,34 @@ public class Member extends User {
      *
      * @return the membership type
      */
-    public String getMembershipType() {
+    public MembershipType getMembershipType() {
         return membershipType;
     }
+
+
+    public String getMembershipStatus() { return membershipStatus; }
+    public void setMembershipStatus(String membershipStatus) { this.membershipStatus = membershipStatus; }
+    public List<Payment> getPayments() { return payments; }
+    public void setPayments(List<Payment> payments) { this.payments = payments; }
+
 
     /**
      * Sets the membership type of this member.
      *
      * @param membershipType the membership type to set
      */
-    public void setMembershipType(String membershipType) {
+    public void setMembershipType(MembershipType membershipType) {
         this.membershipType = membershipType;
+        // Update fee strategy when membership type changes
+        this.feeStrategy = MembershipFeeStrategyFactory.createStrategy(membershipType);
+        this.membershipFee = feeStrategy.calculateFee();
     }
-    public String getMembershipStatus() { return membershipStatus; }
-    public void setMembershipStatus(String membershipStatus) { this.membershipStatus = membershipStatus; }
-    public List<Payment> getPayments() { return payments; }
-    public void setPayments(List<Payment> payments) { this.payments = payments; }
+
+    public double getMembershipFee() {
+        return membershipFee;
+    }
+
+    public void updateMembershipFee() {
+        this.membershipFee = feeStrategy.calculateFee();
+    }
 }

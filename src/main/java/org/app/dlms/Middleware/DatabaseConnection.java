@@ -44,7 +44,7 @@ public class DatabaseConnection {
                 // Fall back to default values
                 dbUrl = "jdbc:mysql://localhost:3306/dlms";
                 username = "root";
-                password = "blz$P7L$@y03";
+                password = "password";
                 driver = "com.mysql.cj.jdbc.Driver";
             } else {
                 // Load the properties file
