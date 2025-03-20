@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
  */
 public class DashboardComponents {
     private ContentArea contentArea;
+    private User currentUser;
 
     // Components for each section
     private Node dashboardComponent;
@@ -44,9 +45,10 @@ public class DashboardComponents {
     private AddUserForm addUserForm;
     private boolean isAddUserFormVisible = false;
 
-    public DashboardComponents(ContentArea contentArea) {
+    public DashboardComponents(ContentArea contentArea,User user) {
         this.contentArea = contentArea;
         this.addUserForm = new AddUserForm();
+        this.currentUser = user;
         initializeComponents();
     }
 
@@ -55,7 +57,7 @@ public class DashboardComponents {
         dashboardComponent = createDashboardComponent();
 
         usersComponent = createUsersComponent();
-        BookInventoryComponent bookComponent = new BookInventoryComponent();
+        BookInventoryComponent bookComponent = new BookInventoryComponent(currentUser);
         BorrowedBooksComponent borrowedBookComponent = new BorrowedBooksComponent();
         booksComponent = bookComponent.createBooksComponent();
 //        booksComponent = createBooksComponent();

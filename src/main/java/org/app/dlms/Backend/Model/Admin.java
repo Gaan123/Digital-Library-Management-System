@@ -33,6 +33,6 @@ public class Admin extends User {
      */
     @Override
     public UserRole getRole() {
-        return UserRole.Librarian;
+        return UserRole.Admin;
     }
 }

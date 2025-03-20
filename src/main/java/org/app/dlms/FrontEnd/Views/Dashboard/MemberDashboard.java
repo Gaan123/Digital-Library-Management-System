@@ -53,7 +53,7 @@ public class MemberDashboard extends Application {
         mainLayout.setTop(topBar.getComponent());
 
         // Initialize components
-        components = new DashboardComponents(contentArea);
+        components = new DashboardComponents(contentArea,member);
 
         // Set the initial content
         contentArea.setContent(components.getDashboardComponent());

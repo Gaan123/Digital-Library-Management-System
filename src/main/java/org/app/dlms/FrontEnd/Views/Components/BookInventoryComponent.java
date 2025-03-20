@@ -21,8 +21,11 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.app.dlms.Backend.Dao.BookDAO;
 import org.app.dlms.Backend.Dao.GenreDAO;
+import org.app.dlms.Backend.Model.Admin;
 import org.app.dlms.Backend.Model.Book;
 import org.app.dlms.Backend.Model.Genre;
+import org.app.dlms.Backend.Model.User;
+import org.app.dlms.Middleware.Enums.UserRole;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -35,12 +38,15 @@ public class BookInventoryComponent {
     private ObservableList<Genre> genresList;
     private TableView<Book> booksTable;
     private TextField searchField;
+    private User currentUser;
 
-    public BookInventoryComponent() {
+
+    public BookInventoryComponent(User user) {
         this.bookDAO = new BookDAO();
         this.genreDAO = new GenreDAO();
         this.booksList = FXCollections.observableArrayList();
         this.genresList = FXCollections.observableArrayList();
+        currentUser = user;
     }
 
     public Node createBooksComponent() {
@@ -68,16 +74,23 @@ public class BookInventoryComponent {
                 searchBooks(newValue);
             }
         });
+        System.out.println(currentUser.getRole()+"334");
+        if (currentUser.getRole()== UserRole.Admin){
+            Button addBookBtn = new Button("Add New Book");
+            addBookBtn.setStyle("-fx-background-color: #303f9f; -fx-text-fill: white;");
+            addBookBtn.setOnAction(e -> showAddBookDialog());
 
-        Button addBookBtn = new Button("Add New Book");
-        addBookBtn.setStyle("-fx-background-color: #303f9f; -fx-text-fill: white;");
-        addBookBtn.setOnAction(e -> showAddBookDialog());
+            Button categoryBtn = new Button("Categories");
+            categoryBtn.setStyle("-fx-background-color: #5c6bc0; -fx-text-fill: white;");
+            categoryBtn.setOnAction(e -> showGenreManagementDialog());
 
-        Button categoryBtn = new Button("Categories");
-        categoryBtn.setStyle("-fx-background-color: #5c6bc0; -fx-text-fill: white;");
-        categoryBtn.setOnAction(e -> showGenreManagementDialog());
+            actionsBar.getChildren().addAll(searchField, addBookBtn, categoryBtn);
+        }else{
 
-        actionsBar.getChildren().addAll(searchField, addBookBtn, categoryBtn);
+
+            actionsBar.getChildren().addAll(searchField);
+        }
+
 
         // Books table setup
         setupBooksTable();

@@ -270,7 +270,7 @@ public class BookDAO {
 
         try {
             conn = dbConnection.getConnection();
-            String sql = "SELECT * FROM books WHERE title LIKE ? OR author LIKE ? OR category LIKE ?";
+            String sql = "SELECT * FROM books WHERE title LIKE ? OR author LIKE ? OR isbn LIKE ?";
             stmt = conn.prepareStatement(sql);
 
             String searchPattern = "%" + searchTerm + "%";
@@ -316,7 +316,8 @@ public class BookDAO {
                 stmt.close();
             }
             if (conn != null) {
-                conn.close();
+                // Release the connection back to the pool instead of closing it
+                DatabaseConnection.getInstance().releaseConnection(conn);
             }
         } catch (SQLException e) {
             System.err.println("Error closing database resources");

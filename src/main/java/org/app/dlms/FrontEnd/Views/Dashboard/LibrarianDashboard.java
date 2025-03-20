@@ -52,7 +52,7 @@ public class LibrarianDashboard extends Application {
         mainLayout.setTop(topBar.getComponent());
 
         // Initialize components
-        components = new DashboardComponents(contentArea);
+        components = new DashboardComponents(contentArea,librarian);
 
         // Set the initial content
         contentArea.setContent(components.getDashboardComponent());

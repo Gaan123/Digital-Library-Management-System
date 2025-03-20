@@ -53,7 +53,7 @@ public class AdminDashboard extends Application {
         mainLayout.setTop(topBar.getComponent());
 
         // Initialize components
-        components = new DashboardComponents(contentArea);
+        components = new DashboardComponents(contentArea,admin);
 
         // Set the initial content
         contentArea.setContent(components.getDashboardComponent());
