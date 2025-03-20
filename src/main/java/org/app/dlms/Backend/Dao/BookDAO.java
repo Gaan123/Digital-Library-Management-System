@@ -48,8 +48,8 @@ public class BookDAO {
                 book.setAuthor(rs.getString("author"));
                 book.setIsbn(rs.getString("isbn"));
                 book.setPublisher(rs.getString("publisher"));
-                book.setYear(rs.getInt("publication_year"));
-                book.setAvailable(rs.getBoolean("is_available"));
+                book.setYear(rs.getInt("year"));
+                book.setAvailable(rs.getBoolean("available"));
                 book.setStock(rs.getInt("stock"));
             }
         } catch (SQLException e) {
@@ -86,8 +86,8 @@ public class BookDAO {
                 book.setAuthor(rs.getString("author"));
                 book.setIsbn(rs.getString("isbn"));
                 book.setPublisher(rs.getString("publisher"));
-                book.setYear(rs.getInt("publication_year"));
-                book.setAvailable(rs.getBoolean("is_available"));
+                book.setYear(rs.getInt("year"));
+                book.setAvailable(rs.getBoolean("available"));
                 book.setStock(rs.getInt("stock"));
                 books.add(book);
             }
@@ -115,7 +115,7 @@ public class BookDAO {
 
         try {
             conn = dbConnection.getConnection();
-            String sql = "INSERT INTO books (title, author, isbn, publisher, publication_year, category, is_available, stock) " +
+            String sql = "INSERT INTO books (title, author, isbn, publisher, year, genre_id, available, stock) " +
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
             stmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS);
 
@@ -124,6 +124,7 @@ public class BookDAO {
             stmt.setString(3, book.getIsbn());
             stmt.setString(4, book.getPublisher());
             stmt.setInt(5, book.getYear());
+            stmt.setInt(6, book.getGenreId());
             stmt.setBoolean(7, book.isAvailable());
             stmt.setInt(8, book.getStock());
 
@@ -160,7 +161,9 @@ public class BookDAO {
         try {
             conn = dbConnection.getConnection();
             String sql = "UPDATE books SET title = ?, author = ?, publisher = ?, " +
-                    "publication_year = ?, category = ?, is_available = ?, stock = ? " +
+                    "year = ?, " +
+//                    "genre_id = ?," +
+                    " available = ?, stock = ? " +
                     "WHERE isbn = ?";
             stmt = conn.prepareStatement(sql);
 
@@ -168,9 +171,10 @@ public class BookDAO {
             stmt.setString(2, book.getAuthor());
             stmt.setString(3, book.getPublisher());
             stmt.setInt(4, book.getYear());
-            stmt.setBoolean(6, book.isAvailable());
-            stmt.setInt(7, book.getStock());
-            stmt.setString(8, book.getIsbn());
+//            stmt.setInt(5, book.getGenreId());
+            stmt.setBoolean(5, book.isAvailable());
+            stmt.setInt(6, book.getStock());
+            stmt.setString(7, book.getIsbn());
 
             int affectedRows = stmt.executeUpdate();
             success = (affectedRows > 0);
@@ -244,8 +248,8 @@ public class BookDAO {
                 book.setAuthor(rs.getString("author"));
                 book.setIsbn(rs.getString("isbn"));
                 book.setPublisher(rs.getString("publisher"));
-                book.setYear(rs.getInt("publication_year"));
-                book.setAvailable(rs.getBoolean("is_available"));
+                book.setYear(rs.getInt("year"));
+                book.setAvailable(rs.getBoolean("available"));
                 book.setStock(rs.getInt("stock"));
                 books.add(book);
             }
@@ -328,7 +332,7 @@ public class BookDAO {
 
         try {
             conn = dbConnection.getConnection();
-            String sql = "UPDATE books SET is_available = (stock > 0) WHERE isbn = ?";
+            String sql = "UPDATE books SET available = (stock > 0) WHERE isbn = ?";
             stmt = conn.prepareStatement(sql);
             stmt.setString(1, isbn);
             stmt.executeUpdate();

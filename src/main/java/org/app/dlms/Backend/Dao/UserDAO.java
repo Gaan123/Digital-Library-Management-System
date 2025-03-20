@@ -3,7 +3,7 @@ package org.app.dlms.Backend.Dao;
 import org.app.dlms.Backend.Model.*;
 import org.app.dlms.Middleware.DatabaseConnection;
 import org.app.dlms.Middleware.Enums.UserRole;
-import org.app.dlms.Middleware.PasswordUtil;
+import org.app.dlms.Middleware.Services.PasswordUtil;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

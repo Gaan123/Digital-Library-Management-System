@@ -11,7 +11,7 @@ module org.app.dlms {
     requires eu.hansolo.tilesfx;
     requires com.almasb.fxgl.all;
     requires java.sql;
-    requires java.desktop;
+    requires javafx.graphics;
 
     opens org.app.dlms to javafx.fxml;
     opens org.app.dlms.FrontEnd.Views.Auth to javafx.fxml;

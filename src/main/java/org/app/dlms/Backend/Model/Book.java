@@ -11,6 +11,7 @@ public class Book {
     private String publisher;
     private int year;
     private Genre genre;
+    private int genreId;
     private boolean available;
     private int stock;
 
@@ -28,11 +29,11 @@ public class Book {
      * @param isbn Book ISBN
      * @param publisher Book publisher
      * @param year Publication year
-     * @param category Book category
+     * @param genreId Book category
      * @param available Availability status
      * @param stock Number of copies available
      */
-    public Book(String title, String author, String isbn, String publisher, int year, String category, boolean available, int stock) {
+    public Book(String title, String author, String isbn, String publisher, int year, int genreId, boolean available, int stock) {
         this.title = title;
         this.author = author;
         this.isbn = isbn;
@@ -40,6 +41,7 @@ public class Book {
         this.year = year;
         this.available = available;
         this.stock = stock;
+        this.genreId = genreId;
     }
 
     /**
@@ -176,6 +178,9 @@ public class Book {
 
     public Genre getGenre() { return genre; }
     public void setGenre(Genre genre) { this.genre = genre; }
+
+    public int getGenreId() { return genreId; }
+    public void setGenreId(int genreId) { this.genreId = genreId; }
 
     /**
      * Check if the book is available

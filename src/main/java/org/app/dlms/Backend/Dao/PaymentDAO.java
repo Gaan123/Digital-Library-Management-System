@@ -2,7 +2,7 @@ package org.app.dlms.Backend.Dao;
 
 import org.app.dlms.Backend.Model.Payment;
 import org.app.dlms.Middleware.DatabaseConnection;
-import org.app.dlms.Middleware.PasswordUtil;
+import org.app.dlms.Middleware.Services.PasswordUtil;
 
 import java.sql.*;
 import java.util.ArrayList;

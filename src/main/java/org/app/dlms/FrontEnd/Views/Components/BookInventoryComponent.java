@@ -307,7 +307,7 @@ public class BookInventoryComponent {
                     }
 
                     // Create new book object
-                    Book newBook = new Book(title, author, isbn, publisher, year, genre.getName(), stock > 0, stock);
+                    Book newBook = new Book(title, author, isbn, publisher, year, genre.getId(), stock > 0, stock);
                     newBook.setGenre(genre);
 
                     // Save to database in background thread
@@ -328,6 +328,7 @@ public class BookInventoryComponent {
                     return newBook;
                 } catch (NumberFormatException e) {
                     showAlert("Validation Error", "Year and Stock must be valid numbers.");
+                    System.out.println(e.getMessage());
                     return null;
                 }
             }
