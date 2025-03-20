@@ -10,6 +10,13 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import org.app.dlms.Backend.Model.Member;
+import org.app.dlms.Backend.Model.User;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * Modified Sidebar with menu click event handler
  */
@@ -18,16 +25,33 @@ public class Sidebar {
     private MenuItemClickListener menuItemClickListener;
 
     // Menu items for the sidebar
-    private final String[] menuItems = {
+    private String[] menuItems = {
             "Dashboard", "Users", "Books", "Borrowed Books", "Payments"
     };
 
     // Icons for menu items
-    private final String[] menuIcons = {
+    private String[] menuIcons = {
             "📊", "👥", "📚", "📋", "💰", "⚙️"
     };
 
-    public Sidebar() {
+
+    public Sidebar(User user) {
+        // If user is a Member, remove "Users" from menu
+        if (user instanceof Member) {
+            List<String> itemsList = new ArrayList<>(Arrays.asList(menuItems));
+            List<String> iconsList = new ArrayList<>(Arrays.asList(menuIcons));
+
+            // Find and remove "Users" from menu items
+            int usersIndex = itemsList.indexOf("Users");
+            if (usersIndex != -1) {
+                itemsList.remove(usersIndex);
+                iconsList.remove(usersIndex);
+            }
+
+            // Convert back to arrays
+            menuItems = itemsList.toArray(new String[0]);
+            menuIcons = iconsList.toArray(new String[0]);
+        }
         initializeComponent();
     }
 

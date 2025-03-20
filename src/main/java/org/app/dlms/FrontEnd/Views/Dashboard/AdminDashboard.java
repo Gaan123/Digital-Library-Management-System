@@ -8,6 +8,7 @@ import javafx.stage.Popup;
 import javafx.stage.Stage;
 
 import org.app.dlms.Backend.Model.Admin;
+import org.app.dlms.FrontEnd.Views.Auth.LoginPage;
 import org.app.dlms.FrontEnd.Views.Components.DashboardComponents;
 import org.app.dlms.FrontEnd.Views.Components.Sidebar;
 import org.app.dlms.FrontEnd.Views.Components.TopBar;
@@ -27,12 +28,18 @@ public class AdminDashboard extends Application {
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
         primaryStage.setTitle("Admin Dashboard");
-
+// Check if admin is null, redirect to login page if true
+        if (admin == null) {
+            // Create and show login page
+            LoginPage loginPage = new LoginPage();
+            loginPage.start(primaryStage);
+            return; // Important: exit this method to prevent dashboard from loading
+        }
         // Create the main layout
         mainLayout = new BorderPane();
 
         // Create the sidebar
-        sidebar = new Sidebar();
+        sidebar = new Sidebar(admin);
         mainLayout.setLeft(sidebar.getComponent());
 
         // Create the content area
@@ -69,6 +76,8 @@ public class AdminDashboard extends Application {
     }
 
     public void start(Stage primaryStage, Admin admin) {
+
+
         this.primaryStage = primaryStage;
         this.admin = admin;
         start(primaryStage);
@@ -113,7 +122,9 @@ public class AdminDashboard extends Application {
                     break;
                 case "Logout":
                     // Handle logout action
-                    System.out.println("Logout action triggered");
+                    LoginPage loginPage = new LoginPage();
+                    loginPage.start(primaryStage);
+                    this.admin=null;
                     break;
                 default:
                     contentArea.setContent(ContentArea.createWelcomeContent(

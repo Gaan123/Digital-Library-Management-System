@@ -31,9 +31,11 @@ import javafx.scene.image.Image;
 import org.app.dlms.Backend.Dao.UserDAO;
 import org.app.dlms.Backend.Model.Admin;
 import org.app.dlms.Backend.Model.Librarian;
+import org.app.dlms.Backend.Model.Member;
 import org.app.dlms.Backend.Model.User;
 import org.app.dlms.FrontEnd.Views.Dashboard.AdminDashboard;
 import org.app.dlms.FrontEnd.Views.Dashboard.LibrarianDashboard;
+import org.app.dlms.FrontEnd.Views.Dashboard.MemberDashboard;
 import org.app.dlms.Middleware.Services.AlertService;
 
 import java.io.FileInputStream;
@@ -215,6 +217,10 @@ public class LoginPage extends Application {
                 if (user instanceof Librarian){
                     LibrarianDashboard dashboard = new LibrarianDashboard();
                     dashboard.start(dashboardStage, (Librarian) user);
+                }
+                if (user instanceof Member){
+                    MemberDashboard dashboard = new MemberDashboard();
+                    dashboard.start(dashboardStage, (Member) user);
                 }
 
                 // Optionally hide the login window instead of closing it

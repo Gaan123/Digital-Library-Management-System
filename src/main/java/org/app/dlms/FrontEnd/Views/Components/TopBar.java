@@ -156,8 +156,8 @@ public class TopBar {
         dropdownContent.setEffect(shadow);
 
         // Add dropdown items
-        String[] dropdownItems = {"My Profile", "Account Settings", "Notifications", "Help", "Logout"};
-        String[] dropdownIcons = {"👤", "⚙️", "🔔", "❓", "🚪"};
+        String[] dropdownItems = {"My Profile", "Account Settings", "Notifications", "Help"};
+        String[] dropdownIcons = {"👤", "⚙️", "🔔", "❓"};
 
         for (int i = 0; i < dropdownItems.length; i++) {
             HBox item = createDropdownItem(dropdownIcons[i], dropdownItems[i]);
