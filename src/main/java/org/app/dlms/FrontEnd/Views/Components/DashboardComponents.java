@@ -202,7 +202,29 @@ public class DashboardComponents {
 
         return item;
     }
+    private void showEditUserForm(BorderPane mainContainer, VBox usersView, User user) {
+        // Create an edit user form
+        AddUserForm editUserForm = new AddUserForm(currentUser, user);
+        Node editFormNode = editUserForm.createAddUserForm();
 
+        // Create a back button
+        Button backButton = new Button("← Back to Users List");
+        backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #303f9f; -fx-font-weight: bold;");
+        backButton.setOnAction(backEvent -> {
+            mainContainer.setCenter(usersView);
+            mainContainer.setTop(null);
+            // Refresh the table after returning to it
+//            loadUsers(usersTable);
+        });
+
+        // Add the back button to the top of the form
+        HBox backButtonContainer = new HBox(backButton);
+        backButtonContainer.setPadding(new Insets(10, 0, 0, 20));
+
+        // Update the container
+        mainContainer.setTop(backButtonContainer);
+        mainContainer.setCenter(editFormNode);
+    }
     private Node createUsersComponent() {
         BorderPane mainContainer = new BorderPane();
 
@@ -279,7 +301,7 @@ public class DashboardComponents {
                     // Handle edit action
                     System.out.println("Edit user: " + user.getId());
                     // Show edit form
-//                    showEditUserForm(mainContainer, usersView, user);
+                    showEditUserForm(mainContainer, usersView, user);
                 });
 
                 deleteBtn.setOnAction(event -> {
