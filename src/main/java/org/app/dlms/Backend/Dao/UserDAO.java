@@ -265,6 +265,18 @@ public class UserDAO {
         }
         return null;
     }
+    private   MembershipType membershipTypeFromString(String text) {
+        if (text == null || text.isEmpty()) {
+            return MembershipType.Bronze; // Default value
+        }
+
+        try {
+            return MembershipType.valueOf(text);
+        } catch (IllegalArgumentException e) {
+            // Handle case where the string doesn't match any enum value
+            return MembershipType.Bronze;
+        }
+    }
     /**
      * Get all users in the system
      *
@@ -290,6 +302,7 @@ public class UserDAO {
                 String gender = rs.getString("gender");
                 String address = rs.getString("address");
                 String phone = rs.getString("phone");
+                MembershipType membershipType = membershipTypeFromString(rs.getString("membership_type"));
                 UserRole role = UserRole.valueOf(rs.getString("role"));
 
                 // Create user object based on role
@@ -302,7 +315,7 @@ public class UserDAO {
                         user = new Librarian(id, username, "***", name, email, gender, address, phone);
                         break;
                     case Member:
-                        user = new Member(id, username, "***", name, email, gender, address, phone);
+                        user = new Member(id, username, "***", name, email, gender, address, phone,membershipType);
                         break;
                     default:
                         continue; // Skip unrecognized roles
@@ -353,6 +366,7 @@ public class UserDAO {
                 String gender = rs.getString("gender");
                 String address = rs.getString("address");
                 String phone = rs.getString("phone");
+                MembershipType membershipType = membershipTypeFromString(rs.getString("membership_type"));
                 UserRole role = UserRole.valueOf(rs.getString("role"));
 
                 // Create user object based on role
@@ -365,7 +379,7 @@ public class UserDAO {
                         user = new Librarian(id, username, "***", name, email, gender, address, phone);
                         break;
                     case Member:
-                        user = new Member(id, username, "***", name, email, gender, address, phone);
+                        user = new Member(id, username, "***", name, email, gender, address, phone,membershipType);
                         break;
                     default:
                         continue; // Skip unrecognized roles

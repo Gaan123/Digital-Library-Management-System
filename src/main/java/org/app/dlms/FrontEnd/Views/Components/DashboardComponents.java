@@ -20,6 +20,7 @@ import org.app.dlms.Backend.Model.Member;
 import org.app.dlms.Backend.Model.User;
 import org.app.dlms.Middleware.Enums.MembershipType;
 import org.app.dlms.Middleware.Enums.UserRole;
+import org.app.dlms.Middleware.Services.ComponentService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,12 +41,14 @@ public class DashboardComponents {
     private Node booksComponent;
     private Node borrowedBooksComponent;
     private Node paymentsComponent;
+    private ComponentService componentService;
 
     // Add User Form component
     private AddUserForm addUserForm;
     private boolean isAddUserFormVisible = false;
 
     public DashboardComponents(ContentArea contentArea,User user) {
+        componentService= new ComponentService();
         this.contentArea = contentArea;
         this.addUserForm = new AddUserForm(user);
         this.currentUser = user;
@@ -79,10 +82,10 @@ public class DashboardComponents {
         statsBox.setPrefHeight(120);
 
         // Create stat cards
-        StackPane totalUsers = createStatCard("Total Users", "256", "👥");
-        StackPane totalBooks = createStatCard("Total Books", "1,458", "📚");
-        StackPane activeLoans = createStatCard("Active Loans", "87", "📋");
-        StackPane monthlyRevenue = createStatCard("Monthly Revenue", "$1,250", "💰");
+        StackPane totalUsers = componentService.createStatCard("Total Users", "256", "👥");
+        StackPane totalBooks = componentService.createStatCard("Total Books", "1,458", "📚");
+        StackPane activeLoans = componentService.createStatCard("Active Loans", "87", "📋");
+        StackPane monthlyRevenue = componentService.createStatCard("Monthly Revenue", "$1,250", "💰");
 
         statsBox.getChildren().addAll(totalUsers, totalBooks, activeLoans, monthlyRevenue);
         HBox.setHgrow(totalUsers, Priority.ALWAYS);
@@ -157,30 +160,7 @@ public class DashboardComponents {
         return scrollPane;
     }
 
-    private StackPane createStatCard(String title, String value, String icon) {
-        StackPane card = new StackPane();
-        card.setStyle("-fx-background-color: white; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 5); -fx-background-radius: 8;");
 
-        VBox content = new VBox(5);
-        content.setPadding(new Insets(15));
-        content.setAlignment(Pos.CENTER_LEFT);
-
-        Text iconText = new Text(icon);
-        iconText.setFont(Font.font("Arial", 24));
-
-        Text valueText = new Text(value);
-        valueText.setFont(Font.font("Montserrat", FontWeight.BOLD, 20));
-        valueText.setFill(Color.web("#303f9f"));
-
-        Text titleText = new Text(title);
-        titleText.setFont(Font.font("Montserrat", FontWeight.NORMAL, 14));
-        titleText.setFill(Color.web("#757575"));
-
-        content.getChildren().addAll(iconText, valueText, titleText);
-        card.getChildren().add(content);
-
-        return card;
-    }
 
     private HBox createActivityItem(String activity, String time) {
         HBox item = new HBox();
@@ -270,17 +250,15 @@ public class DashboardComponents {
         TableColumn<User, UserRole> roleCol = new TableColumn<>("User Type");
         roleCol.setCellValueFactory(new PropertyValueFactory<>("role"));
 
-        // For membership type, assuming you have a method to get membership type from the user
+        // For membership type
         TableColumn<User, String> membershipCol = new TableColumn<>("Membership Type");
         membershipCol.setCellValueFactory(cellData -> {
             User user = cellData.getValue();
             String membershipType = "N/A";
-            // This would depend on your actual implementation
-            // For example, you might check if the user is a member and query a membership table
+            // check if the user is a member and query a membership table
             if (user.getRole() == UserRole.Member) {
-                // You might need to call a method from your MembershipDAO here
-                // membershipType = membershipDao.getMembershipTypeForUser(user.getId());
-                membershipType = "Standard"; // Default fallback
+                Member member= (Member) user;
+                 membershipType = String.valueOf(member.getMembershipType());
             }
             return new SimpleStringProperty(membershipType);
         });
@@ -426,27 +404,7 @@ public class DashboardComponents {
         alert.showAndWait();
     }
 
-//     Method to show edit user form
- /*   private void showEditUserForm(BorderPane mainContainer, Node usersView, User user) {
-        // This assumes you have an EditUserForm class or similar
-        // You could also modify your AddUserForm to accept a User object for editing
-        Node editUserFormNode = editUserForm.createEditUserForm(user);
-        mainContainer.setCenter(editUserFormNode);
 
-        // Create a back button
-        Button backButton = new Button("← Back to Users List");
-        backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #303f9f; -fx-font-weight: bold;");
-        backButton.setOnAction(event -> {
-            mainContainer.setCenter(usersView);
-            mainContainer.setTop(null);
-            // Refresh the table after returning to it
-            loadUsers((TableView<User>) ((VBox) usersView).getChildren().get(2));
-        });
-
-        HBox backButtonContainer = new HBox(backButton);
-        backButtonContainer.setPadding(new Insets(10, 0, 0, 20));
-        mainContainer.setTop(backButtonContainer);
-    }*/
 
 
     private Node createBorrowedBooksComponent() {
@@ -511,14 +469,15 @@ public class DashboardComponents {
 
         // Stats summary
         HBox statsBox = new HBox(20);
-        statsBox.setPrefHeight(100);
+        statsBox.setPrefHeight(100); // Set preferred height for the container
 
         // Create stat cards
-        StackPane totalCollected = createStatCard("Total Collected", "$2,450", "💰");
-        StackPane pendingPayments = createStatCard("Pending", "$350", "⏳");
-        StackPane overdueAmounts = createStatCard("Overdue Fines", "$175", "⚠️");
+        StackPane totalCollected = componentService.createStatCard("Total Collected", "$2,450", "💰");
+        StackPane pendingPayments = componentService.createStatCard("Pending", "$350", "⏳");
+        StackPane overdueAmounts = componentService.createStatCard("Overdue Fines", "$175", "⚠️");
 
         statsBox.getChildren().addAll(totalCollected, pendingPayments, overdueAmounts);
+        // Set Hgrow for each card to allow them to expand and fill the space
         HBox.setHgrow(totalCollected, Priority.ALWAYS);
         HBox.setHgrow(pendingPayments, Priority.ALWAYS);
         HBox.setHgrow(overdueAmounts, Priority.ALWAYS);
@@ -549,10 +508,11 @@ public class DashboardComponents {
         TableColumn<Object, String> typeCol = new TableColumn<>("Type");
         TableColumn<Object, String> dateCol = new TableColumn<>("Date");
         TableColumn<Object, String> statusCol = new TableColumn<>("Status");
-        TableColumn<Object, String> actionCol = new TableColumn<>("Actions");
+        // TableColumn<Object, String> actionCol = new TableColumn<>("Actions"); // <-- Line removed
 
-        paymentsTable.getColumns().addAll(idCol, userCol, amountCol, typeCol, dateCol, statusCol, actionCol);
-        VBox.setVgrow(paymentsTable, Priority.ALWAYS);
+        // Add columns to the table, excluding the action column
+        paymentsTable.getColumns().addAll(idCol, userCol, amountCol, typeCol, dateCol, statusCol); // <-- actionCol removed from this list
+        VBox.setVgrow(paymentsTable, Priority.ALWAYS); // Allow table to grow vertically
 
         container.getChildren().addAll(header, statsBox, actionsBar, paymentsTable);
 
