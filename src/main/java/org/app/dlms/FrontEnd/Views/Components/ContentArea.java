@@ -2,6 +2,7 @@ package org.app.dlms.FrontEnd.Views.Components;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.CornerRadii;
@@ -17,6 +18,7 @@ import javafx.scene.text.Text;
  */
 public class ContentArea {
     private StackPane component;
+    private Node currentComponent; // Added to track the current component
 
     public ContentArea() {
         initializeComponent();
@@ -43,6 +45,7 @@ public class ContentArea {
         welcomeBox.getChildren().addAll(welcomeTitle, welcomeSubtitle);
 
         component.getChildren().add(welcomeBox);
+        currentComponent = welcomeBox; // Set initial component
     }
 
     /**
@@ -54,12 +57,29 @@ public class ContentArea {
     }
 
     /**
+     * Gets the current component displayed in the content area
+     * @return The current component being displayed
+     */
+    public Node getCurrentComponent() {
+        return currentComponent;
+    }
+
+    /**
      * Sets the content of the content area
      * @param content The content to set
      */
     public void setContent(javafx.scene.Node content) {
         component.getChildren().clear();
         component.getChildren().add(content);
+        currentComponent = content; // Update current component reference
+    }
+
+    /**
+     * Sets the center content of the content area
+     * @param content The content to set at the center
+     */
+    public void setCenter(Node content) {
+        setContent(content);
     }
 
     /**

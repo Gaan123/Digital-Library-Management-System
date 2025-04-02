@@ -172,10 +172,14 @@ public class BorrowedBooksComponent {
                 
                 if (currentDate.after(dueDate)) {
                     // Calculate days overdue
-                    long daysOverdue = ChronoUnit.DAYS.between(
-                        dueDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate(),
-                        currentDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
-                    );
+                    long daysOverdue = 0;
+                    
+                    // Convert dates to LocalDate safely
+                    LocalDate dueDateLocal = new java.sql.Date(dueDate.getTime()).toLocalDate();
+                    LocalDate currentDateLocal = new java.sql.Date(currentDate.getTime()).toLocalDate();
+                    
+                    // Calculate difference between dates
+                    daysOverdue = ChronoUnit.DAYS.between(dueDateLocal, currentDateLocal);
                     
                     if (daysOverdue > OVERDUE_DAYS) {
                         status = "Severely Overdue (" + daysOverdue + " days)";
@@ -529,21 +533,18 @@ public class BorrowedBooksComponent {
         
         Label borrowDateLabel = new Label("Borrow Date:");
         borrowDatePicker = new DatePicker();
-        borrowDatePicker.setValue(record.getBorrowDate().toInstant()
-            .atZone(ZoneId.systemDefault()).toLocalDate());
+        borrowDatePicker.setValue(new java.sql.Date(record.getBorrowDate().getTime()).toLocalDate());
         borrowDatePicker.setMaxWidth(Double.MAX_VALUE);
         
         Label dueDateLabel = new Label("Due Date:");
         dueDatePicker = new DatePicker();
-        dueDatePicker.setValue(record.getDueDate().toInstant()
-            .atZone(ZoneId.systemDefault()).toLocalDate());
+        dueDatePicker.setValue(new java.sql.Date(record.getDueDate().getTime()).toLocalDate());
         dueDatePicker.setMaxWidth(Double.MAX_VALUE);
         
         Label returnDateLabel = new Label("Return Date:");
         returnDatePicker = new DatePicker();
         if (record.getReturnDate() != null) {
-            returnDatePicker.setValue(record.getReturnDate().toInstant()
-                .atZone(ZoneId.systemDefault()).toLocalDate());
+            returnDatePicker.setValue(new java.sql.Date(record.getReturnDate().getTime()).toLocalDate());
         }
         returnDatePicker.setMaxWidth(Double.MAX_VALUE);
         

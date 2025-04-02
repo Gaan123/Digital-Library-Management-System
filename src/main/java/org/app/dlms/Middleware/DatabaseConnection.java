@@ -159,6 +159,9 @@ public class DatabaseConnection {
                         "member_id INT NOT NULL, " +
                         "payment_date DATE NOT NULL, " +
                         "amount DECIMAL(10, 2) NOT NULL, " +
+                        "type VARCHAR(50) DEFAULT 'Subscription', " +
+                        "description VARCHAR(255), " +
+                        "related_record_id INT DEFAULT 0, " +
                         "FOREIGN KEY (member_id) REFERENCES users(id)" +
                         ")");
 

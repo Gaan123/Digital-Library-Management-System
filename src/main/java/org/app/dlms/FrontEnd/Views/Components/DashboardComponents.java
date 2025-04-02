@@ -1,6 +1,8 @@
 package org.app.dlms.FrontEnd.Views.Components;
 
 import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -21,12 +23,32 @@ import org.app.dlms.Backend.Model.User;
 import org.app.dlms.Middleware.Enums.MembershipType;
 import org.app.dlms.Middleware.Enums.UserRole;
 import org.app.dlms.Middleware.Services.ComponentService;
+import org.app.dlms.Backend.Dao.PaymentDAO;
+import org.app.dlms.Backend.Dao.FineDAO;
+import org.app.dlms.Backend.Model.Payment;
+import org.app.dlms.Backend.Model.Fine;
+import org.app.dlms.Backend.Model.PaymentViewModel;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
+import javafx.collections.FXCollections;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.DialogPane;
 
 /**
  * Class containing all dashboard components
@@ -47,8 +69,8 @@ public class DashboardComponents {
     private AddUserForm addUserForm;
     private boolean isAddUserFormVisible = false;
 
-    public DashboardComponents(ContentArea contentArea,User user) {
-        componentService= new ComponentService();
+    public DashboardComponents(ContentArea contentArea, User user) {
+        componentService = new ComponentService();
         this.contentArea = contentArea;
         this.addUserForm = new AddUserForm(user);
         this.currentUser = user;
@@ -58,12 +80,10 @@ public class DashboardComponents {
     private void initializeComponents() {
         // Initialize all components
         dashboardComponent = createDashboardComponent();
-
         usersComponent = createUsersComponent();
         BookInventoryComponent bookComponent = new BookInventoryComponent(currentUser);
         BorrowedBooksComponent borrowedBookComponent = new BorrowedBooksComponent(currentUser);
         booksComponent = bookComponent.createBooksComponent();
-//        booksComponent = createBooksComponent();
         borrowedBooksComponent = borrowedBookComponent.createBorrowedBooksComponent();
         paymentsComponent = createPaymentsComponent();
     }
@@ -160,8 +180,6 @@ public class DashboardComponents {
         return scrollPane;
     }
 
-
-
     private HBox createActivityItem(String activity, String time) {
         HBox item = new HBox();
         item.setPadding(new Insets(10));
@@ -182,29 +200,7 @@ public class DashboardComponents {
 
         return item;
     }
-    private void showEditUserForm(BorderPane mainContainer, VBox usersView, User user) {
-        // Create an edit user form
-        AddUserForm editUserForm = new AddUserForm(currentUser, user);
-        Node editFormNode = editUserForm.createAddUserForm();
 
-        // Create a back button
-        Button backButton = new Button("← Back to Users List");
-        backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #303f9f; -fx-font-weight: bold;");
-        backButton.setOnAction(backEvent -> {
-            mainContainer.setCenter(usersView);
-            mainContainer.setTop(null);
-            // Refresh the table after returning to it
-//            loadUsers(usersTable);
-        });
-
-        // Add the back button to the top of the form
-        HBox backButtonContainer = new HBox(backButton);
-        backButtonContainer.setPadding(new Insets(10, 0, 0, 20));
-
-        // Update the container
-        mainContainer.setTop(backButtonContainer);
-        mainContainer.setCenter(editFormNode);
-    }
     private Node createUsersComponent() {
         BorderPane mainContainer = new BorderPane();
 
@@ -396,16 +392,31 @@ public class DashboardComponents {
     }
 
     // Helper method to show error alerts
-    private void showErrorAlert(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Error");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+
+
+    private void showEditUserForm(BorderPane mainContainer, VBox usersView, User user) {
+        // Create an edit user form
+        AddUserForm editUserForm = new AddUserForm(currentUser, user);
+        Node editFormNode = editUserForm.createAddUserForm();
+
+        // Create a back button
+        Button backButton = new Button("← Back to Users List");
+        backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #303f9f; -fx-font-weight: bold;");
+        backButton.setOnAction(backEvent -> {
+            mainContainer.setCenter(usersView);
+            mainContainer.setTop(null);
+            // Refresh the table after returning to it
+//            loadUsers(usersTable);
+        });
+
+        // Add the back button to the top of the form
+        HBox backButtonContainer = new HBox(backButton);
+        backButtonContainer.setPadding(new Insets(10, 0, 0, 20));
+
+        // Update the container
+        mainContainer.setTop(backButtonContainer);
+        mainContainer.setCenter(editFormNode);
     }
-
-
-
 
     private Node createBorrowedBooksComponent() {
         VBox container = new VBox(20);
@@ -459,6 +470,11 @@ public class DashboardComponents {
     }
 
     private Node createPaymentsComponent() {
+        // Initialize DAOs
+        PaymentDAO paymentDAO = new PaymentDAO();
+        FineDAO fineDAO = new FineDAO();
+        UserDAO userDAO = new UserDAO();
+        
         VBox container = new VBox(20);
         container.setPadding(new Insets(20));
 
@@ -469,26 +485,63 @@ public class DashboardComponents {
 
         // Stats summary
         HBox statsBox = new HBox(20);
-        statsBox.setPrefHeight(100); // Set preferred height for the container
+        statsBox.setPrefHeight(100);
 
-        // Create stat cards
-        StackPane totalCollected = componentService.createStatCard("Total Collected", "$2,450", "💰");
-        StackPane pendingPayments = componentService.createStatCard("Pending", "$350", "⏳");
-        StackPane overdueAmounts = componentService.createStatCard("Overdue Fines", "$175", "⚠️");
+        // Create the stat cards with real data
+        double subscriptionTotal = 0.0;
+        double fineTotal = 0.0;
+        double pendingFines = 0.0;
+        
+        // Fetch actual data if current user is a member
+        if (currentUser.getRole() == UserRole.Member) {
+            // For a member, only show their own payment stats
+            subscriptionTotal = paymentDAO.getTotalPaymentsByMemberId(currentUser.getId());
+            pendingFines = fineDAO.getTotalUnpaidFinesByMemberId(currentUser.getId());
+        } else {
+            // For admin/librarian, show all payment stats
+            // Implement this with aggregation queries in DAO classes
+            // For now, we'll use placeholder data
+            subscriptionTotal = 2450.0;
+            fineTotal = 350.0;
+            pendingFines = 175.0;
+        }
 
-        statsBox.getChildren().addAll(totalCollected, pendingPayments, overdueAmounts);
-        // Set Hgrow for each card to allow them to expand and fill the space
-        HBox.setHgrow(totalCollected, Priority.ALWAYS);
-        HBox.setHgrow(pendingPayments, Priority.ALWAYS);
-        HBox.setHgrow(overdueAmounts, Priority.ALWAYS);
+        // Create stat cards with actual data
+        StackPane subscriptionTotalCard = componentService.createStatCard(
+            "Subscription Total", 
+            "$" + String.format("%.2f", subscriptionTotal), 
+            "💳"
+        );
+        
+        StackPane finesTotalCard = componentService.createStatCard(
+            "Fines Total", 
+            "$" + String.format("%.2f", fineTotal), 
+            "💰"
+        );
+        
+        StackPane pendingFinesCard = componentService.createStatCard(
+            "Pending Fines", 
+            "$" + String.format("%.2f", pendingFines), 
+            "⚠️"
+        );
 
-        // Search and actions bar
+        statsBox.getChildren().addAll(subscriptionTotalCard, finesTotalCard, pendingFinesCard);
+        HBox.setHgrow(subscriptionTotalCard, Priority.ALWAYS);
+        HBox.setHgrow(finesTotalCard, Priority.ALWAYS);
+        HBox.setHgrow(pendingFinesCard, Priority.ALWAYS);
+
+        // Search and filter bar
         HBox actionsBar = new HBox(10);
         actionsBar.setAlignment(Pos.CENTER_LEFT);
 
         TextField searchField = new TextField();
         searchField.setPromptText("Search payments...");
-        searchField.setPrefWidth(300);
+        searchField.setPrefWidth(200);
+
+        ComboBox<String> typeFilter = new ComboBox<>();
+        typeFilter.getItems().addAll("All", "Subscriptions", "Fines");
+        typeFilter.setValue("All");
+        typeFilter.setPrefWidth(150);
 
         Button recordPaymentBtn = new Button("Record Payment");
         recordPaymentBtn.setStyle("-fx-background-color: #303f9f; -fx-text-fill: white;");
@@ -496,27 +549,577 @@ public class DashboardComponents {
         Button generateReportBtn = new Button("Generate Report");
         generateReportBtn.setStyle("-fx-background-color: #5c6bc0; -fx-text-fill: white;");
 
-        actionsBar.getChildren().addAll(searchField, recordPaymentBtn, generateReportBtn);
+        actionsBar.getChildren().addAll(searchField, typeFilter, recordPaymentBtn, generateReportBtn);
 
-        // Payments table
-        TableView<Object> paymentsTable = new TableView<>();
+        // Create a more specific, typed table for payments
+        TableView<PaymentViewModel> paymentsTable = new TableView<>();
         paymentsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        TableColumn<Object, String> idCol = new TableColumn<>("ID");
-        TableColumn<Object, String> userCol = new TableColumn<>("User");
-        TableColumn<Object, String> amountCol = new TableColumn<>("Amount");
-        TableColumn<Object, String> typeCol = new TableColumn<>("Type");
-        TableColumn<Object, String> dateCol = new TableColumn<>("Date");
-        TableColumn<Object, String> statusCol = new TableColumn<>("Status");
-        // TableColumn<Object, String> actionCol = new TableColumn<>("Actions"); // <-- Line removed
+        TableColumn<PaymentViewModel, Integer> idCol = new TableColumn<>("ID");
+        idCol.setCellValueFactory(new PropertyValueFactory<>("id"));
+        
+        TableColumn<PaymentViewModel, String> userCol = new TableColumn<>("User");
+        userCol.setCellValueFactory(new PropertyValueFactory<>("userName"));
+        
+        TableColumn<PaymentViewModel, Double> amountCol = new TableColumn<>("Amount");
+        amountCol.setCellValueFactory(new PropertyValueFactory<>("amount"));
+        amountCol.setCellFactory(column -> new TableCell<PaymentViewModel, Double>() {
+            @Override
+            protected void updateItem(Double amount, boolean empty) {
+                super.updateItem(amount, empty);
+                if (amount == null || empty) {
+                    setText(null);
+                } else {
+                    setText(String.format("$%.2f", amount));
+                }
+            }
+        });
+        
+        TableColumn<PaymentViewModel, String> typeCol = new TableColumn<>("Type");
+        typeCol.setCellValueFactory(new PropertyValueFactory<>("type"));
+        
+        TableColumn<PaymentViewModel, Date> dateCol = new TableColumn<>("Date");
+        dateCol.setCellValueFactory(new PropertyValueFactory<>("date"));
+        dateCol.setCellFactory(column -> new TableCell<PaymentViewModel, Date>() {
+            @Override
+            protected void updateItem(Date date, boolean empty) {
+                super.updateItem(date, empty);
+                if (date == null || empty) {
+                    setText(null);
+                } else {
+                    setText(new java.text.SimpleDateFormat("MM/dd/yyyy").format(date));
+                }
+            }
+        });
+        
+        TableColumn<PaymentViewModel, String> statusCol = new TableColumn<>("Status");
+        statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
+        statusCol.setCellFactory(column -> new TableCell<PaymentViewModel, String>() {
+            @Override
+            protected void updateItem(String status, boolean empty) {
+                super.updateItem(status, empty);
+                if (status == null || empty) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(status);
+                    switch (status) {
+                        case "Paid":
+                            setStyle("-fx-background-color: #c8e6c9; -fx-text-fill: #2e7d32;");
+                            break;
+                        case "Pending":
+                            setStyle("-fx-background-color: #fff9c4; -fx-text-fill: #ff6f00;");
+                            break;
+                        case "Overdue":
+                            setStyle("-fx-background-color: #ffcdd2; -fx-text-fill: #b71c1c;");
+                            break;
+                        default:
+                            setStyle("");
+                    }
+                }
+            }
+        });
+        
+        TableColumn<PaymentViewModel, String> descriptionCol = new TableColumn<>("Description");
+        descriptionCol.setCellValueFactory(new PropertyValueFactory<>("description"));
+        
+        // Add payment action buttons 
+        TableColumn<PaymentViewModel, Void> actionCol = new TableColumn<>("Actions");
+        actionCol.setCellFactory(column -> new TableCell<PaymentViewModel, Void>() {
+            private final Button viewBtn = new Button("View");
+            private final Button payBtn = new Button("Pay");
+            
+            {
+                viewBtn.setStyle("-fx-background-color: #5c6bc0; -fx-text-fill: white; -fx-font-size: 10px;");
+                payBtn.setStyle("-fx-background-color: #43a047; -fx-text-fill: white; -fx-font-size: 10px;");
+                
+                viewBtn.setOnAction(event -> {
+                    PaymentViewModel payment = getTableView().getItems().get(getIndex());
+                    showPaymentDetails(payment);
+                });
+                
+                payBtn.setOnAction(event -> {
+                    PaymentViewModel payment = getTableView().getItems().get(getIndex());
+                    if ("Fine".equals(payment.getType()) && "Pending".equals(payment.getStatus())) {
+                        processFinePayment(payment);
+                    }
+                });
+            }
+            
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    PaymentViewModel payment = getTableView().getItems().get(getIndex());
+                    HBox buttons = new HBox(5);
+                    buttons.getChildren().add(viewBtn);
+                    
+                    // Only show Pay button for unpaid fines
+                    if ("Fine".equals(payment.getType()) && "Pending".equals(payment.getStatus())) {
+                        buttons.getChildren().add(payBtn);
+                    }
+                    
+                    setGraphic(buttons);
+                }
+            }
+        });
 
-        // Add columns to the table, excluding the action column
-        paymentsTable.getColumns().addAll(idCol, userCol, amountCol, typeCol, dateCol, statusCol); // <-- actionCol removed from this list
-        VBox.setVgrow(paymentsTable, Priority.ALWAYS); // Allow table to grow vertically
+        paymentsTable.getColumns().addAll(idCol, userCol, amountCol, typeCol, dateCol, statusCol, descriptionCol, actionCol);
+        VBox.setVgrow(paymentsTable, Priority.ALWAYS);
+        
+        // Load initial data
+        loadPaymentsData(paymentsTable, userDAO, paymentDAO, fineDAO);
+        
+        // Add event handlers
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> 
+            filterPayments(paymentsTable, newVal, typeFilter.getValue()));
+            
+        typeFilter.setOnAction(e -> {
+            String selectedType = typeFilter.getValue();
+            System.out.println("Type filter changed to: " + selectedType);
+            // Reload data to ensure we have the complete set of payments
+            loadPaymentsData(paymentsTable, userDAO, paymentDAO, fineDAO);
+            // Then apply the filter
+            filterPayments(paymentsTable, searchField.getText(), selectedType);
+        });
+            
+        recordPaymentBtn.setOnAction(e -> 
+            showRecordPaymentDialog(paymentsTable, userDAO, paymentDAO, fineDAO));
 
         container.getChildren().addAll(header, statsBox, actionsBar, paymentsTable);
-
+        
         return container;
+    }
+    
+    private void loadPaymentsData(TableView<PaymentViewModel> paymentsTable, UserDAO userDAO, 
+                                 PaymentDAO paymentDAO, FineDAO fineDAO) {
+        List<PaymentViewModel> paymentViewModels = new ArrayList<>();
+        
+        // Load payment data based on user role
+        if (currentUser.getRole() == UserRole.Member) {
+            // For members, only show their own payments
+            int memberId = currentUser.getId();
+            
+            // Load subscription payments
+            List<Payment> payments = paymentDAO.getPaymentsByMemberId(memberId);
+            for (Payment payment : payments) {
+                User user = userDAO.getUserById(memberId);
+                paymentViewModels.add(new PaymentViewModel(
+                    payment.getId(),
+                    user.getName(),
+                    payment.getAmount(),
+                    "Subscription",
+                    payment.getPaymentDate(),
+                    "Paid",
+                    "Membership payment",
+                    0
+                ));
+            }
+            
+            // Load fines
+            List<Fine> fines = fineDAO.getFinesByMemberId(memberId);
+            for (Fine fine : fines) {
+                User user = userDAO.getUserById(memberId);
+                paymentViewModels.add(new PaymentViewModel(
+                    fine.getId(),
+                    user.getName(),
+                    fine.getAmount(),
+                    "Fine",
+                    new Date(), // We don't have a date in the Fine model, so use current date
+                    fine.isPaid() ? "Paid" : "Pending",
+                    "Fine for book return delay",
+                    fine.getBorrowRecordId()
+                ));
+            }
+        } else {
+            // For admin/librarian, show all payments
+            // For demo purposes, let's add some sample data
+            // In a real implementation, you would fetch this from the database
+            
+            // Sample subscription payments
+            paymentViewModels.add(new PaymentViewModel(
+                1, "John Doe", 50.00, "Subscription", new Date(), "Paid", 
+                "Annual membership", 0
+            ));
+            
+            paymentViewModels.add(new PaymentViewModel(
+                2, "Jane Smith", 25.00, "Subscription", new Date(), "Paid", 
+                "Monthly membership", 0
+            ));
+            
+            // Sample fines
+            paymentViewModels.add(new PaymentViewModel(
+                101, "John Doe", 10.00, "Fine", new Date(), "Pending", 
+                "Late return fine - 5 days overdue", 201
+            ));
+            
+            paymentViewModels.add(new PaymentViewModel(
+                102, "Jane Smith", 15.00, "Fine", new Date(), "Paid", 
+                "Late return fine - 7 days overdue", 202
+            ));
+        }
+        
+        paymentsTable.setItems(FXCollections.observableArrayList(paymentViewModels));
+    }
+    
+    private void filterPayments(TableView<PaymentViewModel> paymentsTable, String searchText, String filterType) {
+        // Get a reference to the original, unfiltered data
+        ObservableList<PaymentViewModel> allPayments = paymentsTable.getItems();
+        
+        System.out.println("Filtering payments. Filter type: " + filterType + ", Search text: " + searchText);
+        System.out.println("Total payments before filter: " + allPayments.size());
+        
+        // Create a filtered list
+        List<PaymentViewModel> filteredList = new ArrayList<>();
+        
+        for (PaymentViewModel payment : allPayments) {
+            // Apply type filter
+            boolean matchesType = "All".equals(filterType) 
+                || ("Subscriptions".equals(filterType) && "Subscription".equals(payment.getType()))
+                || ("Fines".equals(filterType) && "Fine".equals(payment.getType()));
+            
+            // Apply text search
+            boolean matchesSearch = searchText == null || searchText.isEmpty() ||
+                payment.getUserName().toLowerCase().contains(searchText.toLowerCase()) ||
+                payment.getDescription().toLowerCase().contains(searchText.toLowerCase());
+            
+            if (matchesType && matchesSearch) {
+                filteredList.add(payment);
+                System.out.println("Added payment to filtered list: ID=" + payment.getId() + 
+                    ", Type=" + payment.getType() + ", User=" + payment.getUserName());
+            } else {
+                System.out.println("Filtered out payment: ID=" + payment.getId() + 
+                    ", Type=" + payment.getType() + ", matchesType=" + matchesType + 
+                    ", matchesSearch=" + matchesSearch);
+            }
+        }
+        
+        System.out.println("Total payments after filter: " + filteredList.size());
+        paymentsTable.setItems(FXCollections.observableArrayList(filteredList));
+    }
+    
+    private void showPaymentDetails(PaymentViewModel payment) {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Payment Details");
+        dialog.setHeaderText("View Payment Information");
+        
+        // Create dialog content
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20));
+        
+        // Payment details
+        grid.add(new Label("ID:"), 0, 0);
+        grid.add(new Label(String.valueOf(payment.getId())), 1, 0);
+        
+        grid.add(new Label("User:"), 0, 1);
+        grid.add(new Label(payment.getUserName()), 1, 1);
+        
+        grid.add(new Label("Amount:"), 0, 2);
+        grid.add(new Label(String.format("$%.2f", payment.getAmount())), 1, 2);
+        
+        grid.add(new Label("Type:"), 0, 3);
+        grid.add(new Label(payment.getType()), 1, 3);
+        
+        grid.add(new Label("Date:"), 0, 4);
+        grid.add(new Label(new java.text.SimpleDateFormat("MM/dd/yyyy").format(payment.getDate())), 1, 4);
+        
+        grid.add(new Label("Status:"), 0, 5);
+        grid.add(new Label(payment.getStatus()), 1, 5);
+        
+        grid.add(new Label("Description:"), 0, 6);
+        grid.add(new Label(payment.getDescription()), 1, 6);
+        
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        
+        dialog.showAndWait();
+    }
+    
+    private void processFinePayment(PaymentViewModel fineViewModel) {
+        FineDAO fineDAO = new FineDAO();
+        PaymentDAO paymentDAO = new PaymentDAO();
+        
+        // Confirm payment
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Confirm Payment");
+        alert.setHeaderText("Pay Fine");
+        alert.setContentText("Are you sure you want to pay this fine of $" + 
+                            String.format("%.2f", fineViewModel.getAmount()) + "?");
+        
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            // Update fine status
+            Fine fine = fineDAO.getFineById(fineViewModel.getId());
+            if (fine != null) {
+                // Mark fine as paid
+                boolean updateSuccess = fineDAO.updateFinePaymentStatus(fine.getId(), true);
+                
+                // Record the payment
+                if (updateSuccess) {
+                    Payment finePayment = new Payment(
+                        0, // ID will be generated by the database
+                        fine.getMemberId(),
+                        new Date(), // Current date
+                        fine.getAmount(),
+                        "Fine",
+                        "Payment for fine ID: " + fine.getId(),
+                        fine.getId()
+                    );
+                    
+                    int paymentId = paymentDAO.addPayment(finePayment);
+                    
+                    if (paymentId > 0) {
+                        showSuccessAlert("Fine payment successfully processed.");
+                        
+                        // Refresh the payment list
+                        refreshPaymentsTable();
+                    } else {
+                        showErrorAlert("Failed to record the payment.");
+                    }
+                } else {
+                    showErrorAlert("Failed to update fine status.");
+                }
+            } else {
+                showErrorAlert("Fine not found.");
+            }
+        }
+    }
+    
+    private void showRecordPaymentDialog(TableView<PaymentViewModel> paymentsTable, UserDAO userDAO, 
+                                        PaymentDAO paymentDAO, FineDAO fineDAO) {
+        Dialog<Payment> dialog = new Dialog<>();
+        dialog.setTitle("Record Payment");
+        dialog.setHeaderText("Enter Payment Details");
+        
+        // Create dialog content
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20));
+        
+        // Payment type selection
+        ComboBox<String> paymentTypeCombo = new ComboBox<>();
+        paymentTypeCombo.getItems().addAll("Subscription", "Fine");
+        paymentTypeCombo.setValue("Subscription");
+        
+        // User selection
+        ComboBox<User> userCombo = new ComboBox<>();
+        userCombo.setCellFactory(lv -> new ListCell<User>() {
+            @Override
+            protected void updateItem(User user, boolean empty) {
+                super.updateItem(user, empty);
+                setText(empty ? "" : user.getName());
+            }
+        });
+        userCombo.setButtonCell(new ListCell<User>() {
+            @Override
+            protected void updateItem(User user, boolean empty) {
+                super.updateItem(user, empty);
+                setText(empty ? "" : user.getName());
+            }
+        });
+        
+        // Populate user list - in a real app, you'd filter to just show members
+        List<User> users = userDAO.getAllUsers();
+        List<User> members = users.stream()
+            .filter(u -> u.getRole() == UserRole.Member)
+            .collect(Collectors.toList());
+        userCombo.setItems(FXCollections.observableArrayList(members));
+        
+        // Amount field
+        TextField amountField = new TextField();
+        amountField.setPromptText("Enter amount");
+        
+        // Description field
+        TextField descriptionField = new TextField();
+        descriptionField.setPromptText("Enter payment description");
+        
+        // For Fine payments, show a dropdown of unpaid fines
+        ComboBox<Fine> fineCombo = new ComboBox<>();
+        fineCombo.setVisible(false); // Initially hidden
+        fineCombo.setCellFactory(lv -> new ListCell<Fine>() {
+            @Override
+            protected void updateItem(Fine fine, boolean empty) {
+                super.updateItem(fine, empty);
+                setText(empty ? "" : "Fine #" + fine.getId() + " - $" + fine.getAmount());
+            }
+        });
+        
+        // Show/hide fine selection based on payment type
+        paymentTypeCombo.setOnAction(e -> {
+            boolean isFine = "Fine".equals(paymentTypeCombo.getValue());
+            fineCombo.setVisible(isFine);
+            
+            if (isFine && userCombo.getValue() != null) {
+                // Load unpaid fines for selected user
+                User selectedUser = userCombo.getValue();
+                List<Fine> unpaidFines = fineDAO.getFinesByMemberId(selectedUser.getId()).stream()
+                    .filter(fine -> !fine.isPaid())
+                    .collect(Collectors.toList());
+                fineCombo.setItems(FXCollections.observableArrayList(unpaidFines));
+                
+                // Update amount field if a fine is selected
+                if (!unpaidFines.isEmpty()) {
+                    fineCombo.setValue(unpaidFines.get(0));
+                    amountField.setText(String.valueOf(unpaidFines.get(0).getAmount()));
+                }
+            }
+        });
+        
+        // Update fine list when user selection changes
+        userCombo.setOnAction(e -> {
+            if ("Fine".equals(paymentTypeCombo.getValue()) && userCombo.getValue() != null) {
+                User selectedUser = userCombo.getValue();
+                List<Fine> unpaidFines = fineDAO.getFinesByMemberId(selectedUser.getId()).stream()
+                    .filter(fine -> !fine.isPaid())
+                    .collect(Collectors.toList());
+                fineCombo.setItems(FXCollections.observableArrayList(unpaidFines));
+            }
+        });
+        
+        // When fine selection changes, update amount
+        fineCombo.setOnAction(e -> {
+            Fine selectedFine = fineCombo.getValue();
+            if (selectedFine != null) {
+                amountField.setText(String.valueOf(selectedFine.getAmount()));
+            }
+        });
+        
+        // Add fields to grid
+        grid.add(new Label("Payment Type:"), 0, 0);
+        grid.add(paymentTypeCombo, 1, 0);
+        
+        grid.add(new Label("User:"), 0, 1);
+        grid.add(userCombo, 1, 1);
+        
+        grid.add(new Label("Amount:"), 0, 2);
+        grid.add(amountField, 1, 2);
+        
+        grid.add(new Label("Description:"), 0, 3);
+        grid.add(descriptionField, 1, 3);
+        
+        grid.add(new Label("Select Fine:"), 0, 4);
+        grid.add(fineCombo, 1, 4);
+        
+        dialog.getDialogPane().setContent(grid);
+        
+        // Add buttons
+        ButtonType recordButtonType = new ButtonType("Record Payment", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(recordButtonType, ButtonType.CANCEL);
+        
+        // Enable/disable record button depending on whether amount is entered
+        Node recordButton = dialog.getDialogPane().lookupButton(recordButtonType);
+        recordButton.setDisable(true);
+        
+        // Validate amount field - must be a valid number > 0
+        amountField.textProperty().addListener((observable, oldValue, newValue) -> {
+            boolean valid = false;
+            try {
+                double amount = Double.parseDouble(newValue);
+                valid = amount > 0;
+            } catch (NumberFormatException e) {
+                valid = false;
+            }
+            recordButton.setDisable(!valid || userCombo.getValue() == null);
+        });
+        
+        // Also validate user selection
+        userCombo.valueProperty().addListener((observable, oldValue, newValue) -> {
+            boolean amountValid = false;
+            try {
+                if (!amountField.getText().isEmpty()) {
+                    double amount = Double.parseDouble(amountField.getText());
+                    amountValid = amount > 0;
+                }
+            } catch (NumberFormatException e) {
+                amountValid = false;
+            }
+            recordButton.setDisable(!amountValid || newValue == null);
+        });
+        
+        // Convert dialog result
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == recordButtonType) {
+                try {
+                    User selectedUser = userCombo.getValue();
+                    double amount = Double.parseDouble(amountField.getText());
+                    String paymentType = paymentTypeCombo.getValue();
+                    String description = descriptionField.getText();
+                    
+                    Payment payment = new Payment(
+                        0, // ID will be generated
+                        selectedUser.getId(),
+                        new Date(), // Current date
+                        amount,
+                        paymentType,
+                        description,
+                        "Fine".equals(paymentType) && fineCombo.getValue() != null 
+                            ? fineCombo.getValue().getId() : 0
+                    );
+                    
+                    return payment;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return null;
+                }
+            }
+            return null;
+        });
+        
+        // Process result
+        Optional<Payment> result = dialog.showAndWait();
+        result.ifPresent(payment -> {
+            // Record the payment
+            int paymentId = paymentDAO.addPayment(payment);
+            
+            if (paymentId > 0) {
+                // If this is a fine payment, update the fine status
+                if ("Fine".equals(payment.getType()) && payment.getRelatedRecordId() > 0) {
+                    fineDAO.updateFinePaymentStatus(payment.getRelatedRecordId(), true);
+                }
+                
+                showSuccessAlert("Payment successfully recorded.");
+                
+                // Refresh the payment table
+                refreshPaymentsTable();
+            } else {
+                showErrorAlert("Failed to record payment.");
+            }
+        });
+    }
+    
+    private void showSuccessAlert(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Success");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+    
+    private void showErrorAlert(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Error");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+    
+    private void refreshPaymentsTable() {
+        // Recreate and reload the payments component
+        paymentsComponent = createPaymentsComponent();
+        
+        // If the payments tab is currently active, update it
+        if (contentArea.getCurrentComponent() == paymentsComponent) {
+            contentArea.setContent(paymentsComponent);
+        }
+    }
+    
+    private void refreshPaymentsComponent() {
+        paymentsComponent = createPaymentsComponent();
     }
 
     // Getter methods for each component
