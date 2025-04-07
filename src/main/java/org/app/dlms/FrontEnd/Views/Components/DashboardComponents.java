@@ -68,6 +68,7 @@ public class DashboardComponents {
     private Node booksComponent;
     private Node borrowedBooksComponent;
     private Node paymentsComponent;
+    private Node profileComponent;
     private ComponentService componentService;
 
     // Add User Form component
@@ -91,6 +92,7 @@ public class DashboardComponents {
         booksComponent = bookComponent.createBooksComponent();
         borrowedBooksComponent = borrowedBookComponent.createBorrowedBooksComponent();
         paymentsComponent = createPaymentsComponent();
+        profileComponent = createProfileComponent();
     }
 
     private Node createDashboardComponent() {
@@ -1374,5 +1376,14 @@ public class DashboardComponents {
         } else {
             return "just now";
         }
+    }
+
+    private Node createProfileComponent() {
+        ProfileComponent profile = new ProfileComponent(currentUser);
+        return profile.createProfileComponent();
+    }
+
+    public Node getProfileComponent() {
+        return profileComponent;
     }
 }

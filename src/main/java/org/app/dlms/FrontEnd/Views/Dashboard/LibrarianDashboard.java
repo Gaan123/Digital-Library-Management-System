@@ -98,15 +98,9 @@ public class LibrarianDashboard extends Application {
     private void configureMenuListeners() {
         // Add menu change listeners to the sidebar
         sidebar.setOnMenuItemClicked((menuItem) -> {
-            System.out.println(menuItem);
-
             switch(menuItem) {
                 case "Dashboard":
-                    System.out.println("Dashboard");
                     contentArea.setContent(components.getDashboardComponent());
-                    break;
-                case "Users":
-                    contentArea.setContent(components.getUsersComponent());
                     break;
                 case "Books":
                     contentArea.setContent(components.getBooksComponent());
@@ -117,10 +111,14 @@ public class LibrarianDashboard extends Application {
                 case "Payments":
                     contentArea.setContent(components.getPaymentsComponent());
                     break;
+                case "Profile":
+                    contentArea.setContent(components.getProfileComponent());
+                    break;
                 case "Logout":
                     // Handle logout action
                     LoginPage loginPage = new LoginPage();
-                    loginPage.start(primaryStage) ;
+                    loginPage.start(primaryStage);
+                    librarian=null;
                     break;
                 default:
                     contentArea.setContent(ContentArea.createWelcomeContent(

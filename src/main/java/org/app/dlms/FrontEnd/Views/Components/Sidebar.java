@@ -26,12 +26,12 @@ public class Sidebar {
 
     // Menu items for the sidebar
     private String[] menuItems = {
-            "Dashboard", "Users", "Books", "Borrowed Books", "Payments"
+            "Dashboard", "Users", "Books", "Borrowed Books", "Payments", "Profile"
     };
 
     // Icons for menu items
     private String[] menuIcons = {
-            "📊", "👥", "📚", "📋", "💰", "⚙️"
+            "📊", "👥", "📚", "📋", "💰", "👤", "⚙️"
     };
 
 

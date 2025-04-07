@@ -120,6 +120,9 @@ public class AdminDashboard extends Application {
                 case "Payments":
                     contentArea.setContent(components.getPaymentsComponent());
                     break;
+                case "Profile":
+                    contentArea.setContent(components.getProfileComponent());
+                    break;
                 case "Logout":
                     // Handle logout action
                     LoginPage loginPage = new LoginPage();
