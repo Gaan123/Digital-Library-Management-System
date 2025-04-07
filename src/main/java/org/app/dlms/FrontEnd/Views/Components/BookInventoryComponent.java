@@ -159,11 +159,13 @@ public class BookInventoryComponent {
         actionCol.setCellFactory(col -> new TableCell<Book, Void>() {
             private final Button editBtn = new Button("Edit");
             private final Button deleteBtn = new Button("Delete");
-            private final HBox actionButtons = new HBox(5, editBtn, deleteBtn);
+            private final Button viewBtn = new Button("View");
+            private final HBox actionButtons = new HBox(5);
 
             {
                 editBtn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white;");
                 deleteBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white;");
+                viewBtn.setStyle("-fx-background-color: #2196f3; -fx-text-fill: white;");
 
                 editBtn.setOnAction(e -> {
                     Book book = getTableView().getItems().get(getIndex());
@@ -173,6 +175,11 @@ public class BookInventoryComponent {
                 deleteBtn.setOnAction(e -> {
                     Book book = getTableView().getItems().get(getIndex());
                     showDeleteConfirmation(book);
+                });
+                
+                viewBtn.setOnAction(e -> {
+                    Book book = getTableView().getItems().get(getIndex());
+                    showBookDetails(book);
                 });
 
                 actionButtons.setAlignment(Pos.CENTER);
@@ -184,6 +191,16 @@ public class BookInventoryComponent {
                 if (empty) {
                     setGraphic(null);
                 } else {
+                    actionButtons.getChildren().clear();
+                    
+                    // Always add view button for all users
+                    actionButtons.getChildren().add(viewBtn);
+                    
+                    // Only show edit and delete buttons for admin users
+                    if (currentUser.getRole() == UserRole.Admin) {
+                        actionButtons.getChildren().addAll(editBtn, deleteBtn);
+                    }
+                    
                     setGraphic(actionButtons);
                 }
             }
@@ -507,14 +524,14 @@ public class BookInventoryComponent {
                 new SimpleStringProperty(cellData.getValue().getName()));
         nameColumn.setPrefWidth(200);
 
-        TableColumn<Genre, Void> actionColumn = new TableColumn<>("Actions");
-        actionColumn.setCellFactory(col -> new TableCell<Genre, Void>() {
+        TableColumn<Genre, Void> actionCol = new TableColumn<>("Actions");
+        actionCol.setCellFactory(param -> new TableCell<Genre, Void>() {
             private final Button editBtn = new Button("Edit");
             private final Button deleteBtn = new Button("Delete");
-            private final HBox actionButtons = new HBox(5, editBtn, deleteBtn);
+            private final HBox actionButtons = new HBox(5);
 
             {
-                editBtn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white;");
+                editBtn.setStyle("-fx-background-color: #2196f3; -fx-text-fill: white;");
                 deleteBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white;");
 
                 editBtn.setOnAction(e -> {
@@ -526,22 +543,28 @@ public class BookInventoryComponent {
                     Genre genre = getTableView().getItems().get(getIndex());
                     showDeleteGenreConfirmation(genre);
                 });
-
-                actionButtons.setAlignment(Pos.CENTER);
             }
 
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
+                
                 if (empty) {
                     setGraphic(null);
                 } else {
+                    actionButtons.getChildren().clear();
+                    
+                    // Only admin can edit and delete genres
+                    if (currentUser.getRole() == UserRole.Admin) {
+                        actionButtons.getChildren().addAll(editBtn, deleteBtn);
+                    }
+                    
                     setGraphic(actionButtons);
                 }
             }
         });
 
-        genreTable.getColumns().addAll(idColumn, nameColumn, actionColumn);
+        genreTable.getColumns().addAll(idColumn, nameColumn, actionCol);
         genreTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         // Add new genre controls
@@ -677,5 +700,56 @@ public class BookInventoryComponent {
         alert.setHeaderText(null);
         alert.setContentText(content);
         alert.showAndWait();
+    }
+
+    // Method to show book details in a dialog
+    private void showBookDetails(Book book) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Book Details");
+        
+        VBox content = new VBox(10);
+        content.setPadding(new Insets(20));
+        content.setStyle("-fx-background-color: white;");
+        
+        Text title = new Text("Book Details");
+        title.setFont(Font.font("Montserrat", FontWeight.BOLD, 18));
+        title.setFill(Color.web("#303f9f"));
+        
+        GridPane detailsGrid = new GridPane();
+        detailsGrid.setHgap(10);
+        detailsGrid.setVgap(10);
+        detailsGrid.setPadding(new Insets(10, 0, 10, 0));
+        
+        // Add book details to grid
+        int row = 0;
+        addDetailRow(detailsGrid, row++, "ISBN:", book.getIsbn());
+        addDetailRow(detailsGrid, row++, "Title:", book.getTitle());
+        addDetailRow(detailsGrid, row++, "Author:", book.getAuthor());
+        addDetailRow(detailsGrid, row++, "Publisher:", book.getPublisher());
+        addDetailRow(detailsGrid, row++, "Publication Year:", String.valueOf(book.getYear()));
+        addDetailRow(detailsGrid, row++, "Genre:", book.getGenre() != null ? book.getGenre().getName() : "N/A");
+        addDetailRow(detailsGrid, row++, "Stock:", String.valueOf(book.getStock()));
+        addDetailRow(detailsGrid, row++, "Status:", book.isAvailable() ? "Available" : "Unavailable");
+        
+        Button closeButton = new Button("Close");
+        closeButton.setStyle("-fx-background-color: #303f9f; -fx-text-fill: white;");
+        closeButton.setOnAction(e -> dialog.close());
+        
+        content.getChildren().addAll(title, detailsGrid, closeButton);
+        
+        Scene scene = new Scene(content, 400, 400);
+        dialog.setScene(scene);
+        dialog.showAndWait();
+    }
+    
+    private void addDetailRow(GridPane grid, int row, String label, String value) {
+        Label labelNode = new Label(label);
+        labelNode.setStyle("-fx-font-weight: bold;");
+        
+        Text valueNode = new Text(value);
+        
+        grid.add(labelNode, 0, row);
+        grid.add(valueNode, 1, row);
     }
 }

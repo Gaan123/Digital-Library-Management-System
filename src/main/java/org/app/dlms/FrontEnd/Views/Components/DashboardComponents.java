@@ -53,6 +53,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
+import java.text.SimpleDateFormat;
 
 /**
  * Class containing all dashboard components
@@ -112,62 +113,165 @@ public class DashboardComponents {
         HBox statsBox = new HBox(20);
         statsBox.setPrefHeight(120);
 
-        // Get dynamic data
-        int totalUsersCount = userDAO.getTotalUserCount();
-        int totalBooksCount = bookDAO.getTotalBookCount();
-        int activeLoansCount = borrowRecordDAO.getActiveLoansCount();
-        double monthlyRevenue = paymentDAO.getTotalPayments() + fineDAO.getTotalFines();
+        // Different stats for members vs admin/librarian
+        if (currentUser.getRole() == UserRole.Member) {
+            // Member-specific stats
+            Member member = (Member) currentUser;
+            int borrowLimit = getMemberBorrowLimit(member.getMembershipType());
+            
+            // Get active borrow count for member
+            List<BorrowRecord> activeBorrows = borrowRecordDAO.getBorrowRecordsByMember(currentUser.getId())
+                .stream()
+                .filter(record -> record.getReturnDate() == null)
+                .collect(Collectors.toList());
+            int activeBorrowCount = activeBorrows.size();
+            
+            // Get all completed borrows
+            List<BorrowRecord> completedBorrows = borrowRecordDAO.getBorrowRecordsByMember(currentUser.getId())
+                .stream()
+                .filter(record -> record.getReturnDate() != null)
+                .collect(Collectors.toList());
+            int completedBorrowCount = completedBorrows.size();
+            
+            // Get overdue borrows
+            List<BorrowRecord> overdueBorrows = activeBorrows.stream()
+                .filter(record -> record.getDueDate().before(new Date()))
+                .collect(Collectors.toList());
+            int overdueBorrowCount = overdueBorrows.size();
+            
+            // Create stats cards for member
+            StackPane activeBorrowsCard = componentService.createStatCard("Active Borrows", 
+                String.valueOf(activeBorrowCount), "📚");
+            StackPane completedBorrowsCard = componentService.createStatCard("Returned Books", 
+                String.valueOf(completedBorrowCount), "✅");
+            StackPane overdueBorrowsCard = componentService.createStatCard("Overdue Books", 
+                String.valueOf(overdueBorrowCount), "⚠️");
+            StackPane borrowLimitCard = componentService.createStatCard("Borrow Limit", 
+                String.valueOf(borrowLimit), "🔢");
 
-        // Create stat cards with real data
-        StackPane totalUsers = componentService.createStatCard("Total Users", 
-            String.valueOf(totalUsersCount), "👥");
-        StackPane totalBooks = componentService.createStatCard("Total Books", 
-            String.valueOf(totalBooksCount), "📚");
-        StackPane activeLoans = componentService.createStatCard("Active Loans", 
-            String.valueOf(activeLoansCount), "📋");
-        StackPane monthlyRevenueCard = componentService.createStatCard("Total Revenue", 
-            "$" + String.format("%.2f", monthlyRevenue), "💰");
+            statsBox.getChildren().addAll(activeBorrowsCard, completedBorrowsCard, overdueBorrowsCard, borrowLimitCard);
+            HBox.setHgrow(activeBorrowsCard, Priority.ALWAYS);
+            HBox.setHgrow(completedBorrowsCard, Priority.ALWAYS);
+            HBox.setHgrow(overdueBorrowsCard, Priority.ALWAYS);
+            HBox.setHgrow(borrowLimitCard, Priority.ALWAYS);
+        } else {
+            // Admin/Librarian stats (original stats)
+            // Get dynamic data
+            int totalUsersCount = userDAO.getTotalUserCount();
+            int totalBooksCount = bookDAO.getTotalBookCount();
+            int activeLoansCount = borrowRecordDAO.getActiveLoansCount();
+            double monthlyRevenue = paymentDAO.getTotalPayments() + fineDAO.getTotalFines();
 
-        statsBox.getChildren().addAll(totalUsers, totalBooks, activeLoans, monthlyRevenueCard);
-        HBox.setHgrow(totalUsers, Priority.ALWAYS);
-        HBox.setHgrow(totalBooks, Priority.ALWAYS);
-        HBox.setHgrow(activeLoans, Priority.ALWAYS);
-        HBox.setHgrow(monthlyRevenueCard, Priority.ALWAYS);
+            // Create stat cards with real data
+            StackPane totalUsers = componentService.createStatCard("Total Users", 
+                String.valueOf(totalUsersCount), "👥");
+            StackPane totalBooks = componentService.createStatCard("Total Books", 
+                String.valueOf(totalBooksCount), "📚");
+            StackPane activeLoans = componentService.createStatCard("Active Loans", 
+                String.valueOf(activeLoansCount), "📋");
+            StackPane monthlyRevenueCard = componentService.createStatCard("Total Revenue", 
+                "$" + String.format("%.2f", monthlyRevenue), "💰");
+
+            statsBox.getChildren().addAll(totalUsers, totalBooks, activeLoans, monthlyRevenueCard);
+            HBox.setHgrow(totalUsers, Priority.ALWAYS);
+            HBox.setHgrow(totalBooks, Priority.ALWAYS);
+            HBox.setHgrow(activeLoans, Priority.ALWAYS);
+            HBox.setHgrow(monthlyRevenueCard, Priority.ALWAYS);
+        }
 
         // Charts section
         HBox chartsBox = new HBox(20);
         chartsBox.setPrefHeight(300);
 
-        // Pie chart for book categories
-        PieChart bookCategories = new PieChart();
-        bookCategories.setTitle("Book Categories");
+        if (currentUser.getRole() == UserRole.Member) {
+            // Member-specific charts
+            Member member = (Member) currentUser;
+            
+            // Create borrow history chart
+            List<BorrowRecord> memberBorrows = borrowRecordDAO.getBorrowRecordsByMember(member.getId());
+            
+            // Line chart for borrowing history
+            NumberAxis xAxis = new NumberAxis();
+            NumberAxis yAxis = new NumberAxis();
+            xAxis.setLabel("Last 6 Months");
+            yAxis.setLabel("Number of Books");
+            
+            LineChart<Number, Number> borrowingChart = new LineChart<>(xAxis, yAxis);
+            borrowingChart.setTitle("Your Borrowing History");
+            
+            // Create data series for borrowed and returned
+            XYChart.Series<Number, Number> borrowedSeries = new XYChart.Series<>();
+            borrowedSeries.setName("Borrowed");
+            
+            XYChart.Series<Number, Number> returnedSeries = new XYChart.Series<>();
+            returnedSeries.setName("Returned");
+            
+            // Add some dummy data for demonstration
+            // In a real app, you'd calculate this from the actual borrow records
+            borrowedSeries.getData().add(new XYChart.Data<>(1, 3));
+            borrowedSeries.getData().add(new XYChart.Data<>(2, 2));
+            borrowedSeries.getData().add(new XYChart.Data<>(3, 5));
+            borrowedSeries.getData().add(new XYChart.Data<>(4, 4));
+            borrowedSeries.getData().add(new XYChart.Data<>(5, 3));
+            borrowedSeries.getData().add(new XYChart.Data<>(6, 4));
+            
+            returnedSeries.getData().add(new XYChart.Data<>(1, 2));
+            returnedSeries.getData().add(new XYChart.Data<>(2, 1));
+            returnedSeries.getData().add(new XYChart.Data<>(3, 4));
+            returnedSeries.getData().add(new XYChart.Data<>(4, 3));
+            returnedSeries.getData().add(new XYChart.Data<>(5, 4));
+            returnedSeries.getData().add(new XYChart.Data<>(6, 2));
+            
+            borrowingChart.getData().addAll(borrowedSeries, returnedSeries);
+            
+            // Create a pie chart for current borrows by genre
+            PieChart genreChart = new PieChart();
+            genreChart.setTitle("Borrowed Books by Genre");
+            
+            // Dummy data for now - in a real app you'd need to join with book genres
+            genreChart.getData().add(new PieChart.Data("Fiction", 2));
+            genreChart.getData().add(new PieChart.Data("Science", 1));
+            genreChart.getData().add(new PieChart.Data("History", 1));
+            
+            VBox chartContainer1 = new VBox(borrowingChart);
+            VBox chartContainer2 = new VBox(genreChart);
+            
+            chartsBox.getChildren().addAll(chartContainer1, chartContainer2);
+            HBox.setHgrow(chartContainer1, Priority.ALWAYS);
+            HBox.setHgrow(chartContainer2, Priority.ALWAYS);
+        } else {
+            // Original charts for admin/librarian
+            // Pie chart for book categories
+            PieChart bookCategories = new PieChart();
+            bookCategories.setTitle("Book Categories");
 
-        bookCategories.getData().add(new PieChart.Data("Fiction", 35));
-        bookCategories.getData().add(new PieChart.Data("Science", 25));
-        bookCategories.getData().add(new PieChart.Data("History", 15));
-        bookCategories.getData().add(new PieChart.Data("Technology", 20));
-        bookCategories.getData().add(new PieChart.Data("Other", 5));
-        
-        // Pie chart for user roles
-        PieChart userRoles = new PieChart();
-        userRoles.setTitle("User Roles");
-        
-        // Calculate counts for different user roles
-        List<User> allUsers = userDAO.getAllUsers();
-        long memberCount = allUsers.stream().filter(u -> u.getRole() == UserRole.Member).count();
-        long librarianCount = allUsers.stream().filter(u -> u.getRole() == UserRole.Librarian).count();
-        long adminCount = allUsers.stream().filter(u -> u.getRole() == UserRole.Admin).count();
-        
-        userRoles.getData().add(new PieChart.Data("Members", memberCount));
-        userRoles.getData().add(new PieChart.Data("Librarians", librarianCount));
-        userRoles.getData().add(new PieChart.Data("Admins", adminCount));
+            bookCategories.getData().add(new PieChart.Data("Fiction", 35));
+            bookCategories.getData().add(new PieChart.Data("Science", 25));
+            bookCategories.getData().add(new PieChart.Data("History", 15));
+            bookCategories.getData().add(new PieChart.Data("Technology", 20));
+            bookCategories.getData().add(new PieChart.Data("Other", 5));
+            
+            // Pie chart for user roles
+            PieChart userRoles = new PieChart();
+            userRoles.setTitle("User Roles");
+            
+            // Calculate counts for different user roles
+            List<User> allUsers = userDAO.getAllUsers();
+            long memberCount = allUsers.stream().filter(u -> u.getRole() == UserRole.Member).count();
+            long librarianCount = allUsers.stream().filter(u -> u.getRole() == UserRole.Librarian).count();
+            long adminCount = allUsers.stream().filter(u -> u.getRole() == UserRole.Admin).count();
+            
+            userRoles.getData().add(new PieChart.Data("Members", memberCount));
+            userRoles.getData().add(new PieChart.Data("Librarians", librarianCount));
+            userRoles.getData().add(new PieChart.Data("Admins", adminCount));
 
-        VBox chartContainer1 = new VBox(userRoles);
-        VBox chartContainer2 = new VBox(bookCategories);
+            VBox chartContainer1 = new VBox(userRoles);
+            VBox chartContainer2 = new VBox(bookCategories);
 
-        chartsBox.getChildren().addAll(chartContainer1, chartContainer2);
-        HBox.setHgrow(chartContainer1, Priority.ALWAYS);
-        HBox.setHgrow(chartContainer2, Priority.ALWAYS);
+            chartsBox.getChildren().addAll(chartContainer1, chartContainer2);
+            HBox.setHgrow(chartContainer1, Priority.ALWAYS);
+            HBox.setHgrow(chartContainer2, Priority.ALWAYS);
+        }
 
         // Recent activities section
         VBox activitiesBox = new VBox(10);
@@ -176,10 +280,21 @@ public class DashboardComponents {
 
         VBox activitiesList = new VBox(5);
         
-        // Get recent borrow records
+        // Get recent borrow records - filtered by member ID if the user is a member
         List<BorrowRecord> recentBorrows = new ArrayList<>();
         try {
-            recentBorrows = borrowRecordDAO.getAllBorrowRecords();
+            if (currentUser.getRole() == UserRole.Member) {
+                // For members, only show their own records
+                recentBorrows = borrowRecordDAO.getBorrowRecordsByMember(currentUser.getId());
+            } else {
+                // For admins/librarians, show all records
+                recentBorrows = borrowRecordDAO.getAllBorrowRecords();
+            }
+            
+            // Sort by most recent first
+            recentBorrows.sort((a, b) -> b.getBorrowDate().compareTo(a.getBorrowDate()));
+            
+            // Limit to 4 records
             if (recentBorrows.size() > 4) {
                 recentBorrows = recentBorrows.subList(0, 4);
             }
@@ -201,12 +316,20 @@ public class DashboardComponents {
                 }
                 
                 String activity = "";
-                String timeAgo = "recently";
+                String timeAgo = formatTimeAgo(record.getBorrowDate());
                 
                 if (record.getReturnDate() != null) {
-                    activity = member.getName() + " returned '" + book.getTitle() + "'";
+                    if (currentUser.getRole() == UserRole.Member) {
+                        activity = "You returned '" + book.getTitle() + "'";
+                    } else {
+                        activity = member.getName() + " returned '" + book.getTitle() + "'";
+                    }
                 } else {
-                    activity = member.getName() + " borrowed '" + book.getTitle() + "'";
+                    if (currentUser.getRole() == UserRole.Member) {
+                        activity = "You borrowed '" + book.getTitle() + "'";
+                    } else {
+                        activity = member.getName() + " borrowed '" + book.getTitle() + "'";
+                    }
                 }
                 
                 activitiesList.getChildren().add(createActivityItem(activity, timeAgo));
@@ -1210,5 +1333,46 @@ public class DashboardComponents {
 
     public Node getPaymentsComponent() {
         return paymentsComponent;
+    }
+
+    // Helper method to get the borrow limit based on membership type
+    private int getMemberBorrowLimit(MembershipType membershipType) {
+        switch (membershipType) {
+            case Bronze:
+                return 3;
+            case Silver:
+                return 5;
+            case Gold:
+                return 8;
+            case Platinum:
+                return 10;
+            default:
+                return 3; // Default limit
+        }
+    }
+
+    // Helper method to format "time ago" text
+    private String formatTimeAgo(Date date) {
+        if (date == null) {
+            return "recently";
+        }
+        
+        long diffInMillis = new Date().getTime() - date.getTime();
+        long diffInSeconds = diffInMillis / 1000;
+        long diffInMinutes = diffInSeconds / 60;
+        long diffInHours = diffInMinutes / 60;
+        long diffInDays = diffInHours / 24;
+        
+        if (diffInDays > 30) {
+            return new SimpleDateFormat("MMM dd").format(date);
+        } else if (diffInDays > 0) {
+            return diffInDays + (diffInDays == 1 ? " day" : " days") + " ago";
+        } else if (diffInHours > 0) {
+            return diffInHours + (diffInHours == 1 ? " hour" : " hours") + " ago";
+        } else if (diffInMinutes > 0) {
+            return diffInMinutes + (diffInMinutes == 1 ? " minute" : " minutes") + " ago";
+        } else {
+            return "just now";
+        }
     }
 }

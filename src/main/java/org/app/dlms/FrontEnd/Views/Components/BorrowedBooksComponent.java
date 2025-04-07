@@ -20,7 +20,9 @@ import org.app.dlms.Backend.Dao.UserDAO;
 import org.app.dlms.Backend.Model.Book;
 import org.app.dlms.Backend.Model.BorrowRecord;
 import org.app.dlms.Backend.Model.User;
+import org.app.dlms.Backend.Model.Member;
 import org.app.dlms.Middleware.Enums.UserRole;
+import org.app.dlms.Middleware.Enums.MembershipType;
 
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -105,9 +107,10 @@ public class BorrowedBooksComponent {
         overdueBtn.setStyle("-fx-background-color: #5c6bc0; -fx-text-fill: white;");
         Button issueBookBtn = new Button("Issue Book");
         issueBookBtn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white;");
-        if (currentUser.getRole()==UserRole.Member){
+        if (currentUser.getRole() == UserRole.Member){
             filterBar.getChildren().addAll(searchField, allBtn, activeBtn, overdueBtn);
-        }else {
+        } else {
+            // For admin and librarian, show all buttons including issue book
             filterBar.getChildren().addAll(searchField, allBtn, activeBtn, overdueBtn, issueBookBtn);
         }
 
@@ -283,11 +286,16 @@ public class BorrowedBooksComponent {
                     BorrowRecord record = getTableView().getItems().get(getIndex());
                     actionButtons.getChildren().clear();
                     
+                    // Always show Return button for unreturned books
                     if (record.getReturnDate() == null) {
                         actionButtons.getChildren().add(returnBtn);
                     }
                     
-                    actionButtons.getChildren().addAll(editBtn, deleteBtn);
+                    // Only admin can edit and delete records
+                    if (currentUser.getRole() == UserRole.Admin) {
+                        actionButtons.getChildren().addAll(editBtn, deleteBtn);
+                    }
+                    
                     setGraphic(actionButtons);
                 }
             }
@@ -378,7 +386,13 @@ public class BorrowedBooksComponent {
     }
     
     private void filterActiveRecords() {
-        List<BorrowRecord> allRecords = borrowRecordDAO.getAllBorrowRecords();
+        List<BorrowRecord> allRecords = new ArrayList<>();
+        if (currentUser.getRole() == UserRole.Member) {
+            allRecords = borrowRecordDAO.getBorrowRecordsByMember(currentUser.getId());
+        } else {
+            allRecords = borrowRecordDAO.getAllBorrowRecords();
+        }
+        
         List<BorrowRecord> activeRecords = allRecords.stream()
             .filter(record -> record.getReturnDate() == null)
             .collect(Collectors.toList());
@@ -458,10 +472,21 @@ public class BorrowedBooksComponent {
         // Handle save button
         saveButton.setOnAction(e -> {
             if (validateForm()) {
+                User selectedMember = memberComboBox.getValue();
+                
+                // Check if member has reached their borrow limit
+                if (hasReachedBorrowLimit(selectedMember)) {
+                    Member member = (Member) selectedMember;
+                    showErrorAlert("This member has reached their borrowing limit of " + 
+                        getMemberBorrowLimit(member.getMembershipType()) + 
+                        " books based on their " + member.getMembershipType() + " membership.");
+                    return;
+                }
+                
                 // Create new borrow record
                 BorrowRecord newRecord = new BorrowRecord(
                     0, // ID will be assigned by database
-                    memberComboBox.getValue().getId(),
+                    selectedMember.getId(),
                     bookComboBox.getValue().getId(),
                     Date.from(borrowDatePicker.getValue().atStartOfDay(ZoneId.systemDefault()).toInstant()),
                     Date.from(dueDatePicker.getValue().atStartOfDay(ZoneId.systemDefault()).toInstant()),
@@ -501,6 +526,12 @@ public class BorrowedBooksComponent {
     }
     
     private void showEditForm(BorderPane mainContainer, Node mainView, BorrowRecord record) {
+        // Check if the current user is an admin
+        if (currentUser.getRole() != UserRole.Admin) {
+            showErrorAlert("Only administrators can edit borrow records");
+            return;
+        }
+        
         VBox formContainer = new VBox(15);
         formContainer.setPadding(new Insets(20));
         
@@ -781,5 +812,40 @@ public class BorrowedBooksComponent {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    // Method to check if a member has reached their borrow limit
+    private boolean hasReachedBorrowLimit(User user) {
+        if (user.getRole() != UserRole.Member) {
+            return false; // Only apply limits to members
+        }
+        
+        Member member = (Member) user;
+        MembershipType membershipType = member.getMembershipType();
+        int borrowLimit = getMemberBorrowLimit(membershipType);
+        
+        // Get active borrows for this member
+        List<BorrowRecord> activeBorrows = borrowRecordDAO.getBorrowRecordsByMember(member.getId())
+            .stream()
+            .filter(record -> record.getReturnDate() == null)
+            .collect(Collectors.toList());
+        
+        return activeBorrows.size() >= borrowLimit;
+    }
+    
+    // Helper method to get the borrow limit based on membership type
+    private int getMemberBorrowLimit(MembershipType membershipType) {
+        switch (membershipType) {
+            case Bronze:
+                return 3;
+            case Silver:
+                return 5;
+            case Gold:
+                return 8;
+            case Platinum:
+                return 10;
+            default:
+                return 3; // Default limit
+        }
     }
 }
