@@ -698,4 +698,34 @@ public class UserDAO {
         return success;
     }
 
+    /**
+     * Get total number of users in the system
+     *
+     * @return The total count of users
+     */
+    public int getTotalUserCount() {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        int count = 0;
+
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "SELECT COUNT(*) AS total FROM users";
+            stmt = conn.prepareStatement(sql);
+            rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                count = rs.getInt("total");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error retrieving total user count");
+            e.printStackTrace();
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
+        }
+
+        return count;
+    }
+
 }

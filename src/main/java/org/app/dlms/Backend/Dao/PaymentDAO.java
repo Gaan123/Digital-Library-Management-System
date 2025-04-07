@@ -210,4 +210,76 @@ public class PaymentDAO {
         
         return totalAmount;
     }
+
+    /**
+     * Get total payment amount across all members
+     * 
+     * @return Total payment amount
+     */
+    public double getTotalPayments() {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        double totalAmount = 0.0;
+        
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "SELECT SUM(amount) as total FROM payments";
+            stmt = conn.prepareStatement(sql);
+            
+            rs = stmt.executeQuery();
+            
+            if (rs.next()) {
+                totalAmount = rs.getDouble("total");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error calculating total payments");
+            e.printStackTrace();
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
+        }
+        
+        return totalAmount;
+    }
+
+    /**
+     * Get all payments in the system
+     * 
+     * @return List of all payment records
+     */
+    public List<Payment> getAllPayments() {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        List<Payment> payments = new ArrayList<>();
+        
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "SELECT * FROM payments ORDER BY payment_date DESC";
+            stmt = conn.prepareStatement(sql);
+            
+            rs = stmt.executeQuery();
+            
+            while (rs.next()) {
+                Payment payment = new Payment(
+                    rs.getInt("id"),
+                    rs.getInt("member_id"),
+                    new Date(rs.getTimestamp("payment_date").getTime()),
+                    rs.getDouble("amount"),
+                    rs.getString("type") != null ? rs.getString("type") : "Subscription",
+                    rs.getString("description") != null ? rs.getString("description") : "",
+                    rs.getInt("related_record_id")
+                );
+                
+                payments.add(payment);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error retrieving all payments");
+            e.printStackTrace();
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
+        }
+        
+        return payments;
+    }
 }

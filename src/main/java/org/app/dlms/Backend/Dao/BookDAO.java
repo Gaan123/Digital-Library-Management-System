@@ -77,7 +77,7 @@ public class BookDAO {
             conn = dbConnection.getConnection();
             String sql = "SELECT * FROM books WHERE id = ?";
             stmt = conn.prepareStatement(sql);
-            stmt.setString(1, String.valueOf(id));
+            stmt.setInt(1, id);
             rs = stmt.executeQuery();
 
             if (rs.next()) {
@@ -92,7 +92,7 @@ public class BookDAO {
                 book.setStock(rs.getInt("stock"));
             }
         } catch (SQLException e) {
-            System.err.println("Error retrieving book by ISBN: " + id);
+            System.err.println("Error retrieving book by ID: " + id);
             e.printStackTrace();
         } finally {
             closeResources(conn, stmt, rs);
@@ -415,5 +415,35 @@ public class BookDAO {
         }
 
         return hasEnough;
+    }
+
+    /**
+     * Get the total number of books in the library
+     *
+     * @return The total count of books
+     */
+    public int getTotalBookCount() {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        int count = 0;
+
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "SELECT COUNT(*) AS total FROM books";
+            stmt = conn.prepareStatement(sql);
+            rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                count = rs.getInt("total");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error retrieving total book count");
+            e.printStackTrace();
+        } finally {
+            closeResources(conn, stmt, rs);
+        }
+
+        return count;
     }
 }

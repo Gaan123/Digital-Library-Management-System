@@ -212,10 +212,10 @@ public class DatabaseConnection {
      * Utility method to close database resources
      *
      * @param conn The database connection
-     * @param stmt The prepared statement
+     * @param stmt The statement
      * @param rs The result set
      */
-    public void closeResources(Connection conn, PreparedStatement stmt, ResultSet rs) {
+    public void closeResources(Connection conn, Statement stmt, ResultSet rs) {
         try {
             if (rs != null) {
                 rs.close();
@@ -224,7 +224,8 @@ public class DatabaseConnection {
                 stmt.close();
             }
             if (conn != null) {
-                conn.close();
+                // Release the connection back to the pool instead of closing it
+                releaseConnection(conn);
             }
         } catch (SQLException e) {
             System.err.println("Error closing database resources");

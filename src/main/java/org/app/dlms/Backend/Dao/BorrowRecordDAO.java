@@ -12,21 +12,14 @@ import java.util.List;
  * Handles database operations for borrowing records
  */
 public class BorrowRecordDAO {
-    private Connection connection;
+    private DatabaseConnection dbConnection;
     private static final String TABLE_NAME = "borrow_records";
+    
     /**
      * Constructor initializes database connection
      */
     public BorrowRecordDAO() {
-        try {
-            // Assuming there's a DatabaseConnection class or similar mechanism
-            // to get a database connection
-//            DatabaseMetaData DatabaseConnection = dbConnector.getInstance();
-           DatabaseConnection dbConnector = DatabaseConnection.getInstance();
-            this.connection = dbConnector.getConnection();
-        } catch (SQLException e) {
-            System.err.println("Error connecting to database: " + e.getMessage());
-        }
+        dbConnection = DatabaseConnection.getInstance();
     }
 
     /**
@@ -36,11 +29,18 @@ public class BorrowRecordDAO {
      * @return true if successful, false otherwise
      */
     public boolean addBorrowRecord(BorrowRecord borrowRecord) {
-        String sql = "INSERT INTO " + TABLE_NAME + 
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        boolean success = false;
+        
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "INSERT INTO " + TABLE_NAME + 
                      " (member_id, book_id, borrow_date, due_date, return_date) " +
                      "VALUES (?, ?, ?, ?, ?)";
-        
-        try (PreparedStatement stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            
             stmt.setInt(1, borrowRecord.getMemberId());
             stmt.setInt(2, borrowRecord.getBookId());
             stmt.setDate(3, new java.sql.Date(borrowRecord.getBorrowDate().getTime()));
@@ -56,21 +56,22 @@ public class BorrowRecordDAO {
             
             if (rowsAffected > 0) {
                 // Get the generated ID and set it in the borrowRecord object
-                ResultSet generatedKeys = stmt.getGeneratedKeys();
-                if (generatedKeys.next()) {
-                    borrowRecord.setId(generatedKeys.getInt(1));
+                rs = stmt.getGeneratedKeys();
+                if (rs.next()) {
+                    borrowRecord.setId(rs.getInt(1));
                 }
                 
                 // Update book availability
                 updateBookAvailability(borrowRecord.getBookId(), false);
-                return true;
+                success = true;
             }
-            
-            return false;
         } catch (SQLException e) {
             System.err.println("Error adding borrow record: " + e.getMessage());
-            return false;
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
         }
+        
+        return success;
     }
 
     /**
@@ -80,20 +81,28 @@ public class BorrowRecordDAO {
      * @return The borrow record if found, null otherwise
      */
     public BorrowRecord getBorrowRecordById(int id) {
-        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE id = ?";
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        BorrowRecord borrowRecord = null;
         
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "SELECT * FROM " + TABLE_NAME + " WHERE id = ?";
+            stmt = conn.prepareStatement(sql);
             stmt.setInt(1, id);
-            ResultSet rs = stmt.executeQuery();
+            rs = stmt.executeQuery();
             
             if (rs.next()) {
-                return extractBorrowRecordFromResultSet(rs);
+                borrowRecord = extractBorrowRecordFromResultSet(rs);
             }
         } catch (SQLException e) {
             System.err.println("Error getting borrow record by ID: " + e.getMessage());
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
         }
         
-        return null;
+        return borrowRecord;
     }
 
     /**
@@ -102,17 +111,24 @@ public class BorrowRecordDAO {
      * @return List of all borrow records
      */
     public List<BorrowRecord> getAllBorrowRecords() {
+        Connection conn = null;
+        Statement stmt = null;
+        ResultSet rs = null;
         List<BorrowRecord> borrowRecords = new ArrayList<>();
-        String sql = "SELECT * FROM " + TABLE_NAME + " ORDER BY borrow_date DESC";
         
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "SELECT * FROM " + TABLE_NAME + " ORDER BY borrow_date DESC";
+            stmt = conn.createStatement();
+            rs = stmt.executeQuery(sql);
             
             while (rs.next()) {
                 borrowRecords.add(extractBorrowRecordFromResultSet(rs));
             }
         } catch (SQLException e) {
             System.err.println("Error getting all borrow records: " + e.getMessage());
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
         }
         
         return borrowRecords;
@@ -124,17 +140,24 @@ public class BorrowRecordDAO {
      * @return List of active borrow records
      */
     public List<BorrowRecord> getActiveBorrowRecords() {
+        Connection conn = null;
+        Statement stmt = null;
+        ResultSet rs = null;
         List<BorrowRecord> borrowRecords = new ArrayList<>();
-        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE return_date IS NULL ORDER BY due_date ASC";
         
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "SELECT * FROM " + TABLE_NAME + " WHERE return_date IS NULL ORDER BY due_date ASC";
+            stmt = conn.createStatement();
+            rs = stmt.executeQuery(sql);
             
             while (rs.next()) {
                 borrowRecords.add(extractBorrowRecordFromResultSet(rs));
             }
         } catch (SQLException e) {
             System.err.println("Error getting active borrow records: " + e.getMessage());
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
         }
         
         return borrowRecords;
@@ -146,19 +169,26 @@ public class BorrowRecordDAO {
      * @return List of overdue borrow records
      */
     public List<BorrowRecord> getOverdueBorrowRecords() {
+        Connection conn = null;
+        Statement stmt = null;
+        ResultSet rs = null;
         List<BorrowRecord> borrowRecords = new ArrayList<>();
-        String sql = "SELECT * FROM " + TABLE_NAME + 
-                     " WHERE return_date IS NULL AND due_date < CURRENT_DATE " +
-                     "ORDER BY due_date ASC";
         
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "SELECT * FROM " + TABLE_NAME + 
+                         " WHERE return_date IS NULL AND due_date < CURRENT_DATE " +
+                         "ORDER BY due_date ASC";
+            stmt = conn.createStatement();
+            rs = stmt.executeQuery(sql);
             
             while (rs.next()) {
                 borrowRecords.add(extractBorrowRecordFromResultSet(rs));
             }
         } catch (SQLException e) {
             System.err.println("Error getting overdue borrow records: " + e.getMessage());
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
         }
         
         return borrowRecords;
@@ -171,18 +201,25 @@ public class BorrowRecordDAO {
      * @return List of borrow records for the specified member
      */
     public List<BorrowRecord> getBorrowRecordsByMember(int memberId) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
         List<BorrowRecord> borrowRecords = new ArrayList<>();
-        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE member_id = ? ORDER BY borrow_date DESC";
         
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "SELECT * FROM " + TABLE_NAME + " WHERE member_id = ? ORDER BY borrow_date DESC";
+            stmt = conn.prepareStatement(sql);
             stmt.setInt(1, memberId);
-            ResultSet rs = stmt.executeQuery();
+            rs = stmt.executeQuery();
             
             while (rs.next()) {
                 borrowRecords.add(extractBorrowRecordFromResultSet(rs));
             }
         } catch (SQLException e) {
             System.err.println("Error getting borrow records by member: " + e.getMessage());
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
         }
         
         return borrowRecords;
@@ -195,18 +232,25 @@ public class BorrowRecordDAO {
      * @return List of borrow records for the specified book
      */
     public List<BorrowRecord> getBorrowRecordsByBook(int bookId) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
         List<BorrowRecord> borrowRecords = new ArrayList<>();
-        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE book_id = ? ORDER BY borrow_date DESC";
         
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "SELECT * FROM " + TABLE_NAME + " WHERE book_id = ? ORDER BY borrow_date DESC";
+            stmt = conn.prepareStatement(sql);
             stmt.setInt(1, bookId);
-            ResultSet rs = stmt.executeQuery();
+            rs = stmt.executeQuery();
             
             while (rs.next()) {
                 borrowRecords.add(extractBorrowRecordFromResultSet(rs));
             }
         } catch (SQLException e) {
             System.err.println("Error getting borrow records by book: " + e.getMessage());
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
         }
         
         return borrowRecords;
@@ -219,11 +263,17 @@ public class BorrowRecordDAO {
      * @return true if successful, false otherwise
      */
     public boolean updateBorrowRecord(BorrowRecord borrowRecord) {
-        String sql = "UPDATE " + TABLE_NAME + 
-                     " SET member_id = ?, book_id = ?, borrow_date = ?, due_date = ?, return_date = ? " +
-                     "WHERE id = ?";
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        boolean success = false;
         
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "UPDATE " + TABLE_NAME + 
+                       " SET member_id = ?, book_id = ?, borrow_date = ?, due_date = ?, return_date = ? " +
+                       "WHERE id = ?";
+            stmt = conn.prepareStatement(sql);
+            
             stmt.setInt(1, borrowRecord.getMemberId());
             stmt.setInt(2, borrowRecord.getBookId());
             stmt.setDate(3, new java.sql.Date(borrowRecord.getBorrowDate().getTime()));
@@ -232,8 +282,8 @@ public class BorrowRecordDAO {
             // Check if a book is being returned
             BorrowRecord oldRecord = getBorrowRecordById(borrowRecord.getId());
             boolean bookBeingReturned = oldRecord != null && 
-                                        oldRecord.getReturnDate() == null && 
-                                        borrowRecord.getReturnDate() != null;
+                                      oldRecord.getReturnDate() == null && 
+                                      borrowRecord.getReturnDate() != null;
             
             if (borrowRecord.getReturnDate() != null) {
                 stmt.setDate(5, new java.sql.Date(borrowRecord.getReturnDate().getTime()));
@@ -250,11 +300,14 @@ public class BorrowRecordDAO {
                 updateBookAvailability(borrowRecord.getBookId(), true);
             }
             
-            return rowsAffected > 0;
+            success = (rowsAffected > 0);
         } catch (SQLException e) {
             System.err.println("Error updating borrow record: " + e.getMessage());
-            return false;
+        } finally {
+            dbConnection.closeResources(conn, stmt, null);
         }
+        
+        return success;
     }
 
     /**
@@ -264,15 +317,20 @@ public class BorrowRecordDAO {
      * @return true if successful, false otherwise
      */
     public boolean deleteBorrowRecord(int id) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        boolean success = false;
+        
         // First, get the record to know if we need to update book availability
         BorrowRecord record = getBorrowRecordById(id);
         if (record == null) {
             return false;
         }
         
-        String sql = "DELETE FROM " + TABLE_NAME + " WHERE id = ?";
-        
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "DELETE FROM " + TABLE_NAME + " WHERE id = ?";
+            stmt = conn.prepareStatement(sql);
             stmt.setInt(1, id);
             
             int rowsAffected = stmt.executeUpdate();
@@ -282,11 +340,14 @@ public class BorrowRecordDAO {
                 updateBookAvailability(record.getBookId(), true);
             }
             
-            return rowsAffected > 0;
+            success = (rowsAffected > 0);
         } catch (SQLException e) {
             System.err.println("Error deleting borrow record: " + e.getMessage());
-            return false;
+        } finally {
+            dbConnection.closeResources(conn, stmt, null);
         }
+        
+        return success;
     }
 
     /**
@@ -296,22 +357,30 @@ public class BorrowRecordDAO {
      * @return The active borrow record if exists, null otherwise
      */
     public BorrowRecord getCurrentBorrowForBook(int bookId) {
-        String sql = "SELECT * FROM " + TABLE_NAME + 
-                     " WHERE book_id = ? AND return_date IS NULL " +
-                     "ORDER BY borrow_date DESC LIMIT 1";
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        BorrowRecord borrowRecord = null;
         
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "SELECT * FROM " + TABLE_NAME + 
+                       " WHERE book_id = ? AND return_date IS NULL " +
+                       "ORDER BY borrow_date DESC LIMIT 1";
+            stmt = conn.prepareStatement(sql);
             stmt.setInt(1, bookId);
-            ResultSet rs = stmt.executeQuery();
+            rs = stmt.executeQuery();
             
             if (rs.next()) {
-                return extractBorrowRecordFromResultSet(rs);
+                borrowRecord = extractBorrowRecordFromResultSet(rs);
             }
         } catch (SQLException e) {
             System.err.println("Error getting current borrow for book: " + e.getMessage());
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
         }
         
-        return null;
+        return borrowRecord;
     }
 
     /**
@@ -351,14 +420,20 @@ public class BorrowRecordDAO {
      * @param available true if available, false if borrowed
      */
     private void updateBookAvailability(int bookId, boolean available) {
-        String sql = "UPDATE books SET available = ? WHERE id = ?";
+        Connection conn = null;
+        PreparedStatement stmt = null;
         
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "UPDATE books SET available = ? WHERE id = ?";
+            stmt = conn.prepareStatement(sql);
             stmt.setBoolean(1, available);
             stmt.setInt(2, bookId);
             stmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Error updating book availability: " + e.getMessage());
+        } finally {
+            dbConnection.closeResources(conn, stmt, null);
         }
     }
 
@@ -381,15 +456,38 @@ public class BorrowRecordDAO {
     }
 
     /**
-     * Close the database connection
+     * Close the database connection (should be called when application shuts down)
      */
     public void closeConnection() {
+        // No need to explicitly close connection as it's managed by the connection pool
+    }
+
+    /**
+     * Get the total number of active loans
+     * 
+     * @return The total count of active loans
+     */
+    public int getActiveLoansCount() {
+        Connection conn = null;
+        Statement stmt = null;
+        ResultSet rs = null;
+        int count = 0;
+        
         try {
-            if (connection != null && !connection.isClosed()) {
-                connection.close();
+            conn = dbConnection.getConnection();
+            String sql = "SELECT COUNT(*) AS total FROM " + TABLE_NAME + " WHERE return_date IS NULL";
+            stmt = conn.createStatement();
+            rs = stmt.executeQuery(sql);
+            
+            if (rs.next()) {
+                count = rs.getInt("total");
             }
         } catch (SQLException e) {
-            System.err.println("Error closing database connection: " + e.getMessage());
+            System.err.println("Error getting active loans count: " + e.getMessage());
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
         }
+        
+        return count;
     }
 }

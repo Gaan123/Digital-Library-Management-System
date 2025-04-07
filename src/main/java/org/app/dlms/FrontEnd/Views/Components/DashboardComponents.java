@@ -28,6 +28,10 @@ import org.app.dlms.Backend.Dao.FineDAO;
 import org.app.dlms.Backend.Model.Payment;
 import org.app.dlms.Backend.Model.Fine;
 import org.app.dlms.Backend.Model.PaymentViewModel;
+import org.app.dlms.Backend.Dao.BookDAO;
+import org.app.dlms.Backend.Dao.BorrowRecordDAO;
+import org.app.dlms.Backend.Model.BorrowRecord;
+import org.app.dlms.Backend.Model.Book;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -89,6 +93,13 @@ public class DashboardComponents {
     }
 
     private Node createDashboardComponent() {
+        // Initialize DAOs
+        UserDAO userDAO = new UserDAO();
+        BookDAO bookDAO = new BookDAO();
+        BorrowRecordDAO borrowRecordDAO = new BorrowRecordDAO();
+        PaymentDAO paymentDAO = new PaymentDAO();
+        FineDAO fineDAO = new FineDAO();
+        
         VBox container = new VBox(20);
         container.setPadding(new Insets(20));
 
@@ -101,42 +112,31 @@ public class DashboardComponents {
         HBox statsBox = new HBox(20);
         statsBox.setPrefHeight(120);
 
-        // Create stat cards
-        StackPane totalUsers = componentService.createStatCard("Total Users", "256", "👥");
-        StackPane totalBooks = componentService.createStatCard("Total Books", "1,458", "📚");
-        StackPane activeLoans = componentService.createStatCard("Active Loans", "87", "📋");
-        StackPane monthlyRevenue = componentService.createStatCard("Monthly Revenue", "$1,250", "💰");
+        // Get dynamic data
+        int totalUsersCount = userDAO.getTotalUserCount();
+        int totalBooksCount = bookDAO.getTotalBookCount();
+        int activeLoansCount = borrowRecordDAO.getActiveLoansCount();
+        double monthlyRevenue = paymentDAO.getTotalPayments() + fineDAO.getTotalFines();
 
-        statsBox.getChildren().addAll(totalUsers, totalBooks, activeLoans, monthlyRevenue);
+        // Create stat cards with real data
+        StackPane totalUsers = componentService.createStatCard("Total Users", 
+            String.valueOf(totalUsersCount), "👥");
+        StackPane totalBooks = componentService.createStatCard("Total Books", 
+            String.valueOf(totalBooksCount), "📚");
+        StackPane activeLoans = componentService.createStatCard("Active Loans", 
+            String.valueOf(activeLoansCount), "📋");
+        StackPane monthlyRevenueCard = componentService.createStatCard("Total Revenue", 
+            "$" + String.format("%.2f", monthlyRevenue), "💰");
+
+        statsBox.getChildren().addAll(totalUsers, totalBooks, activeLoans, monthlyRevenueCard);
         HBox.setHgrow(totalUsers, Priority.ALWAYS);
         HBox.setHgrow(totalBooks, Priority.ALWAYS);
         HBox.setHgrow(activeLoans, Priority.ALWAYS);
-        HBox.setHgrow(monthlyRevenue, Priority.ALWAYS);
+        HBox.setHgrow(monthlyRevenueCard, Priority.ALWAYS);
 
         // Charts section
         HBox chartsBox = new HBox(20);
         chartsBox.setPrefHeight(300);
-
-        // Line chart for loans over time
-        NumberAxis xAxis = new NumberAxis(1, 12, 1);
-        NumberAxis yAxis = new NumberAxis(0, 100, 10);
-        xAxis.setLabel("Month");
-        yAxis.setLabel("Number of Loans");
-
-        LineChart<Number, Number> loanChart = new LineChart<>(xAxis, yAxis);
-        loanChart.setTitle("Monthly Loans");
-
-        XYChart.Series<Number, Number> series = new XYChart.Series<>();
-        series.setName("2024");
-
-        series.getData().add(new XYChart.Data<>(1, 45));
-        series.getData().add(new XYChart.Data<>(2, 52));
-        series.getData().add(new XYChart.Data<>(3, 60));
-        series.getData().add(new XYChart.Data<>(4, 75));
-        series.getData().add(new XYChart.Data<>(5, 68));
-        series.getData().add(new XYChart.Data<>(6, 72));
-
-        loanChart.getData().add(series);
 
         // Pie chart for book categories
         PieChart bookCategories = new PieChart();
@@ -147,8 +147,22 @@ public class DashboardComponents {
         bookCategories.getData().add(new PieChart.Data("History", 15));
         bookCategories.getData().add(new PieChart.Data("Technology", 20));
         bookCategories.getData().add(new PieChart.Data("Other", 5));
+        
+        // Pie chart for user roles
+        PieChart userRoles = new PieChart();
+        userRoles.setTitle("User Roles");
+        
+        // Calculate counts for different user roles
+        List<User> allUsers = userDAO.getAllUsers();
+        long memberCount = allUsers.stream().filter(u -> u.getRole() == UserRole.Member).count();
+        long librarianCount = allUsers.stream().filter(u -> u.getRole() == UserRole.Librarian).count();
+        long adminCount = allUsers.stream().filter(u -> u.getRole() == UserRole.Admin).count();
+        
+        userRoles.getData().add(new PieChart.Data("Members", memberCount));
+        userRoles.getData().add(new PieChart.Data("Librarians", librarianCount));
+        userRoles.getData().add(new PieChart.Data("Admins", adminCount));
 
-        VBox chartContainer1 = new VBox(loanChart);
+        VBox chartContainer1 = new VBox(userRoles);
         VBox chartContainer2 = new VBox(bookCategories);
 
         chartsBox.getChildren().addAll(chartContainer1, chartContainer2);
@@ -161,13 +175,53 @@ public class DashboardComponents {
         activitiesHeader.setFont(Font.font("Montserrat", FontWeight.BOLD, 18));
 
         VBox activitiesList = new VBox(5);
-        activitiesList.getChildren().addAll(
-                createActivityItem("John Smith borrowed 'The Great Gatsby'", "10 minutes ago"),
-                createActivityItem("New user registered: Emma Wilson", "45 minutes ago"),
-                createActivityItem("Book returned: 'To Kill a Mockingbird'", "2 hours ago"),
-                createActivityItem("Late fee payment received: $12.50", "5 hours ago")
-        );
+        
+        // Get recent borrow records
+        List<BorrowRecord> recentBorrows = new ArrayList<>();
+        try {
+            recentBorrows = borrowRecordDAO.getAllBorrowRecords();
+            if (recentBorrows.size() > 4) {
+                recentBorrows = recentBorrows.subList(0, 4);
+            }
+        } catch (Exception e) {
+            System.err.println("Error fetching borrow records: " + e.getMessage());
+            e.printStackTrace();
+        }
 
+        // Create activity items
+        for (BorrowRecord record : recentBorrows) {
+            try {
+                User member = userDAO.getUserById(record.getMemberId());
+                Book book = bookDAO.getBookById(record.getBookId());
+                
+                // Skip this record if either member or book is null
+                if (member == null || book == null) {
+                    System.out.println("Skipping borrow record: member or book is null");
+                    continue;
+                }
+                
+                String activity = "";
+                String timeAgo = "recently";
+                
+                if (record.getReturnDate() != null) {
+                    activity = member.getName() + " returned '" + book.getTitle() + "'";
+                } else {
+                    activity = member.getName() + " borrowed '" + book.getTitle() + "'";
+                }
+                
+                activitiesList.getChildren().add(createActivityItem(activity, timeAgo));
+            } catch (Exception e) {
+                // Log the error but continue processing other records
+                System.err.println("Error processing borrow record: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+
+        // If no activities were loaded, add a default message
+        if (activitiesList.getChildren().isEmpty()) {
+            activitiesList.getChildren().add(createActivityItem("No recent activities", ""));
+        }
+        
         activitiesBox.getChildren().addAll(activitiesHeader, activitiesList);
 
         // Add all components to container
@@ -487,23 +541,27 @@ public class DashboardComponents {
         HBox statsBox = new HBox(20);
         statsBox.setPrefHeight(100);
 
-        // Create the stat cards with real data
+        // Fetch actual data based on user role
         double subscriptionTotal = 0.0;
         double fineTotal = 0.0;
         double pendingFines = 0.0;
         
-        // Fetch actual data if current user is a member
         if (currentUser.getRole() == UserRole.Member) {
             // For a member, only show their own payment stats
             subscriptionTotal = paymentDAO.getTotalPaymentsByMemberId(currentUser.getId());
             pendingFines = fineDAO.getTotalUnpaidFinesByMemberId(currentUser.getId());
+            // Calculate total fines for this member
+            List<Fine> memberFines = fineDAO.getFinesByMemberId(currentUser.getId());
+            for (Fine fine : memberFines) {
+                if (fine.isPaid()) {
+                    fineTotal += fine.getAmount();
+                }
+            }
         } else {
             // For admin/librarian, show all payment stats
-            // Implement this with aggregation queries in DAO classes
-            // For now, we'll use placeholder data
-            subscriptionTotal = 2450.0;
-            fineTotal = 350.0;
-            pendingFines = 175.0;
+            subscriptionTotal = paymentDAO.getTotalPayments();
+            fineTotal = fineDAO.getTotalFines();
+            pendingFines = fineDAO.getTotalUnpaidFines();
         }
 
         // Create stat cards with actual data
@@ -735,30 +793,41 @@ public class DashboardComponents {
             }
         } else {
             // For admin/librarian, show all payments
-            // For demo purposes, let's add some sample data
-            // In a real implementation, you would fetch this from the database
-            
-            // Sample subscription payments
-            paymentViewModels.add(new PaymentViewModel(
-                1, "John Doe", 50.00, "Subscription", new Date(), "Paid", 
-                "Annual membership", 0
-            ));
-            
-            paymentViewModels.add(new PaymentViewModel(
-                2, "Jane Smith", 25.00, "Subscription", new Date(), "Paid", 
-                "Monthly membership", 0
-            ));
-            
-            // Sample fines
-            paymentViewModels.add(new PaymentViewModel(
-                101, "John Doe", 10.00, "Fine", new Date(), "Pending", 
-                "Late return fine - 5 days overdue", 201
-            ));
-            
-            paymentViewModels.add(new PaymentViewModel(
-                102, "Jane Smith", 15.00, "Fine", new Date(), "Paid", 
-                "Late return fine - 7 days overdue", 202
-            ));
+            // Load all subscription payments from database
+            List<Payment> allPayments = paymentDAO.getAllPayments();
+            for (Payment payment : allPayments) {
+                User user = userDAO.getUserById(payment.getMemberId());
+                String userName = user != null ? user.getName() : "Unknown User";
+                
+                paymentViewModels.add(new PaymentViewModel(
+                    payment.getId(),
+                    userName,
+                    payment.getAmount(),
+                    payment.getType(),
+                    payment.getPaymentDate(),
+                    "Paid",
+                    payment.getDescription(),
+                    payment.getRelatedRecordId()
+                ));
+            }
+
+            // Load all fines
+            List<Fine> allFines = fineDAO.getAllFines();
+            for (Fine fine : allFines) {
+                User user = userDAO.getUserById(fine.getMemberId());
+                String userName = user != null ? user.getName() : "Unknown User";
+                
+                paymentViewModels.add(new PaymentViewModel(
+                    fine.getId(),
+                    userName,
+                    fine.getAmount(),
+                    "Fine",
+                    new Date(), // We don't have a date in the Fine model
+                    fine.isPaid() ? "Paid" : "Pending",
+                    "Fine for book return delay",
+                    fine.getBorrowRecordId()
+                ));
+            }
         }
         
         paymentsTable.setItems(FXCollections.observableArrayList(paymentViewModels));

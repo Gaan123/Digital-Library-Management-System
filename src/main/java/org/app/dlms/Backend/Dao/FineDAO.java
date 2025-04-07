@@ -241,4 +241,105 @@ public class FineDAO {
         
         return totalAmount;
     }
+
+    /**
+     * Get total fines amount across all members
+     * 
+     * @return Total fines amount
+     */
+    public double getTotalFines() {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        double totalAmount = 0.0;
+        
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "SELECT SUM(amount) as total FROM fines";
+            stmt = conn.prepareStatement(sql);
+            
+            rs = stmt.executeQuery();
+            
+            if (rs.next()) {
+                totalAmount = rs.getDouble("total");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error calculating total fines");
+            e.printStackTrace();
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
+        }
+        
+        return totalAmount;
+    }
+
+    /**
+     * Get total unpaid fines amount across all members
+     * 
+     * @return Total unpaid fines amount
+     */
+    public double getTotalUnpaidFines() {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        double totalAmount = 0.0;
+        
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "SELECT SUM(amount) as total FROM fines WHERE paid = false";
+            stmt = conn.prepareStatement(sql);
+            
+            rs = stmt.executeQuery();
+            
+            if (rs.next()) {
+                totalAmount = rs.getDouble("total");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error calculating total unpaid fines");
+            e.printStackTrace();
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
+        }
+        
+        return totalAmount;
+    }
+
+    /**
+     * Get all fines in the system
+     * 
+     * @return List of all fine records
+     */
+    public List<Fine> getAllFines() {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        List<Fine> fines = new ArrayList<>();
+        
+        try {
+            conn = dbConnection.getConnection();
+            String sql = "SELECT * FROM fines ORDER BY id DESC";
+            stmt = conn.prepareStatement(sql);
+            
+            rs = stmt.executeQuery();
+            
+            while (rs.next()) {
+                Fine fine = new Fine(
+                    rs.getInt("id"),
+                    rs.getInt("member_id"),
+                    rs.getInt("borrow_record_id"),
+                    rs.getDouble("amount"),
+                    rs.getBoolean("paid")
+                );
+                
+                fines.add(fine);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error retrieving all fines");
+            e.printStackTrace();
+        } finally {
+            dbConnection.closeResources(conn, stmt, rs);
+        }
+        
+        return fines;
+    }
 } 
